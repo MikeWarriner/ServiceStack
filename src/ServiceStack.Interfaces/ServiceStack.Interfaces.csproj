@@ -215,6 +215,7 @@
     <Compile Include="ServiceHost\IService.cs" />
     <Compile Include="ServiceHost\IServiceController.cs" />
     <Compile Include="ServiceHost\IServiceRoutes.cs" />
+    <Compile Include="ServiceHost\PublishSchemaAttribute.cs" />
     <Compile Include="ServiceHost\RestServiceAttribute.cs" />
     <Compile Include="ServiceHost\ServiceAttribute.cs" />
     <Compile Include="ServiceInterface.ServiceModel\CollectionTypes.cs" />

@@ -225,11 +225,16 @@ namespace ServiceStack.ServiceInterface
 		{
 			// Predict the Response message type name
 			// Get the type
-			var responseDtoType = AssemblyUtils.FindType(GetResponseDtoName(request));
-			var responseDto = CreateResponseDto(request);
+			var responseDtoType = AssemblyUtils.FindType(GetResponseDtoName(request, true));
+            if (responseDtoType==null)
+                responseDtoType = AssemblyUtils.FindType(GetResponseDtoName(request, false));
 
-			if (responseDto == null)
-				return null;
+            var responseDto = ReflectionUtils.CreateInstance(responseDtoType);
+
+            if (responseDto == null)
+            {
+                return null;
+            }
 
 			// For faster serialization of exceptions, services should implement IHasResponseStatus
 			var hasResponseStatus = responseDto as IHasResponseStatus;
@@ -261,7 +266,7 @@ namespace ServiceStack.ServiceInterface
 		protected static object CreateResponseDto(TRequest request)
 		{
 			// Get the type
-			var responseDtoType = AssemblyUtils.FindType(GetResponseDtoName(request));
+			var responseDtoType = AssemblyUtils.FindType(GetResponseDtoName(request, true));
 
 			if (responseDtoType == null)
 			{
@@ -274,9 +279,21 @@ namespace ServiceStack.ServiceInterface
 			return responseDto;
 		}
 
-		protected static string GetResponseDtoName(TRequest request)
+		protected static string GetResponseDtoName(TRequest request, bool useDefaultSuffix)
 		{
-			return typeof(TRequest).FullName + ResponseDtoSuffix;
+            string requestTypeName = typeof(TRequest).FullName ;
+            // mfw - strip Request off
+            if (requestTypeName.EndsWith("Request"))
+                    requestTypeName = requestTypeName.Substring(0, requestTypeName.Length - 7);
+                
+            if (useDefaultSuffix)
+            {
+                return requestTypeName + ResponseDtoSuffix;
+            }
+            else
+            {
+                return requestTypeName;
+            }
 		}
 
 		protected HttpResult View(string viewName, object response)

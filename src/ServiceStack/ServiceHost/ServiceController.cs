@@ -71,6 +71,14 @@ namespace ServiceStack.ServiceHost
 			{
 				if (serviceType.IsAbstract || serviceType.ContainsGenericParameters) continue;
 
+                // mfw - implement publishschema to allow us to publish non-servicestack used interfaces
+                if (serviceType.GetCustomAttributes(typeof(PublishSchemaAttribute), true).Length > 0)
+                {
+                    this.AllOperationTypes.Add(serviceType);
+                    this.OperationTypes.Add(serviceType);
+                }
+                //
+
 				foreach (var service in serviceType.GetInterfaces())
 				{
 					if (!service.IsGenericType
@@ -96,7 +104,16 @@ namespace ServiceStack.ServiceHost
 						this.OperationTypes.Add(responseType);
 					}
 
-					Log.DebugFormat("Registering {0} service '{1}' with request '{2}'",
+                    // mfw mod 30/08/2011
+                    var responseTypeName2 = requestType.FullName.Replace("Request", ResponseDtoSuffix);
+                    var responseType2 = AssemblyUtils.FindType(responseTypeName2);
+                    if (responseType2 != null)
+                    {
+                        this.AllOperationTypes.Add(responseType2);
+                        this.OperationTypes.Add(responseType2);
+                    }
+
+                    Log.DebugFormat("Registering {0} service '{1}' with request '{2}'",
 						(responseType != null ? "SyncReply" : "OneWay"),
 						serviceType.Name, requestType.Name);
 				}

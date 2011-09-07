@@ -1,4 +1,5 @@
-SET MSBUILD=C:\Windows\Microsoft.NET\Framework\v3.5\MSBuild.exe
+REM SET MSBUILD=C:\Windows\Microsoft.NET\Framework\v3.5\MSBuild.exe
+SET MSBUILD=c:\windows\Microsoft.NET\Framework\v4.0.30319\MSBuild.exe
 
 REM SET BUILD=Debug
 SET BUILD=Release
@@ -24,3 +25,4 @@ COPY ..\src\ServiceStack\bin\%BUILD%\ServiceStack.Text.dll ..\..\ServiceStack.Or
 COPY ..\src\ServiceStack\bin\%BUILD%\ServiceStack.Text.pdb ..\..\ServiceStack.OrmLite\lib
 COPY ..\src\ServiceStack\bin\%BUILD%\ServiceStack.Common.dll ..\..\ServiceStack.OrmLite\lib
 COPY ..\src\ServiceStack\bin\%BUILD%\ServiceStack.Common.pdb ..\..\ServiceStack.OrmLite\lib
+

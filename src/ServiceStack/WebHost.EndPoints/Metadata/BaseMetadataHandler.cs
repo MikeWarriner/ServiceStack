@@ -52,33 +52,38 @@ namespace ServiceStack.WebHost.Endpoints.Metadata
 			if (operationName != null)
 			{
 				var allTypes = operations.AllOperations.Types;
-				var operationType = allTypes.Single(x => x.Name == operationName);
-				var requestMessage = CreateMessage(operationType);
-				var restPaths = CreateRestPaths(operationType);
-				string responseMessage = null;
-				if (allTypes.Any(x => x.Name == operationName + ResponseSuffix))
-				{
-					var operationResponseType = allTypes.Single(x => x.Name == operationName + ResponseSuffix);
-					responseMessage = CreateMessage(operationResponseType);
-				}
-				var description = "";
-				var descAttrs = operationType.GetCustomAttributes(typeof(DescriptionAttribute), true);
-				if (descAttrs.Length > 0)
-				{
-					var descAttr = (DescriptionAttribute) descAttrs[0]; 
-					if (!descAttr.Description.IsNullOrEmpty())
-					{
-						description = "<div id='desc'>" 
-							+ "<p>" + descAttr.Description
-								.Replace("<", "&lt;")
-								.Replace(">", "&gt;")
-								.Replace("\n", "<br />\n")
-							+ "</p>"
-							+ "</div>";
-					}
-				}
+                // mfw - added next three
+                var operationTypes = allTypes.Where(x=>x.Name==operationName);
+                foreach (var operationType in operationTypes)
+                {
+                    //var operationType = allTypes.Single(x => x.Name == operationName);
+                    var requestMessage = CreateMessage(operationType);
+                    var restPaths = CreateRestPaths(operationType);
+                    string responseMessage = null;
+                    if (allTypes.Any(x => x.Name == operationName + ResponseSuffix))
+                    {
+                        var operationResponseType = allTypes.Single(x => x.Name == operationName + ResponseSuffix);
+                        responseMessage = CreateMessage(operationResponseType);
+                    }
+                    var description = "";
+                    var descAttrs = operationType.GetCustomAttributes(typeof(DescriptionAttribute), true);
+                    if (descAttrs.Length > 0)
+                    {
+                        var descAttr = (DescriptionAttribute)descAttrs[0];
+                        if (!descAttr.Description.IsNullOrEmpty())
+                        {
+                            description = "<div id='desc'>"
+                                + "<p>" + descAttr.Description
+                                    .Replace("<", "&lt;")
+                                    .Replace(">", "&gt;")
+                                    .Replace("\n", "<br />\n")
+                                + "</p>"
+                                + "</div>";
+                        }
+                    }
 
-				RenderOperation(writer, httpReq, operationName, requestMessage, responseMessage, restPaths, description);
+                    RenderOperation(writer, httpReq, operationName, requestMessage, responseMessage, restPaths, description);
+                }
 				return;
 			}
 

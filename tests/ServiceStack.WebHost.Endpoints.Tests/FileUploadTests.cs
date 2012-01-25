@@ -93,7 +93,7 @@ namespace ServiceStack.WebHost.Endpoints.Tests
 		[Test]
 		public void Can_POST_upload_file()
 		{
-			var uploadFile = new FileInfo("~/TestExistingDir/upload.html".MapAbsolutePath());
+			var uploadFile = new FileInfo("~/TestExistingDir/upload.html".MapProjectPath());
 
 			var webRequest = (HttpWebRequest)WebRequest.Create(ListeningOn + "/fileuploads");
 			webRequest.Accept = ContentType.Json;
@@ -114,7 +114,7 @@ namespace ServiceStack.WebHost.Endpoints.Tests
 		{
 			IServiceClient client = new JsonServiceClient(ListeningOn);
 
-			var uploadFile = new FileInfo("~/TestExistingDir/upload.html".MapAbsolutePath());
+			var uploadFile = new FileInfo("~/TestExistingDir/upload.html".MapProjectPath());
 
 
 			var response = client.PostFile<FileUploadResponse>(
@@ -133,11 +133,11 @@ namespace ServiceStack.WebHost.Endpoints.Tests
 		{
 			IServiceClient client = new JsonServiceClient(ListeningOn);
 
-			var uploadFile = new FileInfo("~/TestExistingDir/upload.html".MapAbsolutePath());
+			var uploadFile = new FileInfo("~/TestExistingDir/upload.html".MapProjectPath());
 
 			try
 			{
-				var response = client.PostFile<FileUploadResponse>(
+				client.PostFile<FileUploadResponse>(
 					ListeningOn + "/fileuploads/ThrowError", uploadFile, MimeTypes.GetMimeType(uploadFile.Name));
 
 				Assert.Fail("Upload Service should've thrown an error");
@@ -155,7 +155,7 @@ namespace ServiceStack.WebHost.Endpoints.Tests
 		[Test]
 		public void Can_GET_upload_file()
 		{
-			var uploadedFile = new FileInfo("~/TestExistingDir/upload.html".MapAbsolutePath());
+			var uploadedFile = new FileInfo("~/TestExistingDir/upload.html".MapProjectPath());
 			var webRequest = (HttpWebRequest)WebRequest.Create(ListeningOn + "/fileuploads/TestExistingDir/upload.html");
 			var expectedContents = new StreamReader(uploadedFile.OpenRead()).ReadToEnd();
 

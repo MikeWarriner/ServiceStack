@@ -1,6 +1,7 @@
 using System;
 using ServiceStack.Common.Web;
 using ServiceStack.Logging;
+using ServiceStack.MiniProfiler;
 using ServiceStack.ServiceHost;
 using ServiceStack.Text;
 using ServiceStack.WebHost.Endpoints.Extensions;
@@ -49,7 +50,7 @@ namespace ServiceStack.WebHost.Endpoints
 
 				operationName = restPath.RequestType.Name;
 
-				var callback = httpReq.QueryString["callback"];
+				var callback = httpReq.GetJsonpCallback();
 				var doJsonp = EndpointHost.Config.AllowJsonpRequests
 							  && !string.IsNullOrEmpty(callback);
 
@@ -59,7 +60,7 @@ namespace ServiceStack.WebHost.Endpoints
 				var request = GetRequest(httpReq, restPath);
 				if (EndpointHost.ApplyRequestFilters(httpReq, httpRes, request)) return;
 
-				var response = GetResponse(httpReq, request);
+				var response = GetResponse(httpReq, httpRes, request);
 				if (EndpointHost.ApplyResponseFilters(httpReq, httpRes, response)) return;
 
 				if (responseContentType.Contains("jsv") && !string.IsNullOrEmpty(httpReq.QueryString["debug"]))
@@ -68,45 +69,45 @@ namespace ServiceStack.WebHost.Endpoints
 					return;
 				}
 
-				if (doJsonp)
-					httpRes.WriteToResponse(httpReq, response, (callback + "(").ToUtf8Bytes(), ")".ToUtf8Bytes());
-				else
-					httpRes.WriteToResponse(httpReq, response);
-			}
-			catch (Exception ex)
+                if(doJsonp)
+                    httpRes.WriteToResponse(httpReq, response, (callback + "(").ToUtf8Bytes(), ")".ToUtf8Bytes());
+                else
+                    httpRes.WriteToResponse(httpReq, response);
+            }
+            catch (Exception ex) 
 			{
-				var errorMessage = string.Format("Error occured while Processing Request: {0}", ex.Message);
-				Log.Error(errorMessage, ex);
-
-				var attrEndpointType = ContentType.GetEndpointAttributes(responseContentType);
-				httpRes.WriteErrorToResponse(attrEndpointType, operationName, errorMessage, ex);
+				if (!EndpointHost.Config.WriteErrorsToResponse) throw;
+				HandleException(responseContentType, httpRes, operationName, ex);
 			}
 		}
 
-		public override object GetResponse(IHttpRequest httpReq, object request)
+		public override object GetResponse(IHttpRequest httpReq, IHttpResponse httpRes, object request)
 		{
 			var requestContentType = ContentType.GetEndpointAttributes(httpReq.ResponseContentType);
 
 			return ExecuteService(request,
-				HandlerAttributes | requestContentType | GetEndpointAttributes(httpReq), httpReq);
+				HandlerAttributes | requestContentType | GetEndpointAttributes(httpReq), httpReq, httpRes);
 		}
 
 		private static object GetRequest(IHttpRequest httpReq, IRestPath restPath)
 		{
-			var requestParams = httpReq.GetRequestParams();
-
-			object requestDto = null;
-
-			if (!string.IsNullOrEmpty(httpReq.ContentType) && httpReq.ContentLength > 0)
+			using (Profiler.Current.Step("Deserialize Request"))
 			{
-				var requestDeserializer = EndpointHost.AppHost.ContentTypeFilters.GetStreamDeserializer(httpReq.ContentType);
-				if (requestDeserializer != null)
-				{
-					requestDto = requestDeserializer(restPath.RequestType, httpReq.InputStream);
-				}
-			}
+				var requestParams = httpReq.GetRequestParams();
 
-			return restPath.CreateRequest(httpReq.PathInfo, requestParams, requestDto);
+				object requestDto = null;
+
+				if (!string.IsNullOrEmpty(httpReq.ContentType) && httpReq.ContentLength > 0)
+				{
+					var requestDeserializer = EndpointHost.AppHost.ContentTypeFilters.GetStreamDeserializer(httpReq.ContentType);
+					if (requestDeserializer != null)
+					{
+						requestDto = requestDeserializer(restPath.RequestType, httpReq.InputStream);
+					}
+				}
+
+				return restPath.CreateRequest(httpReq.PathInfo, requestParams, requestDto);
+			}
 		}
 
 		/// <summary>

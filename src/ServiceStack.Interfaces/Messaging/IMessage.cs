@@ -1,4 +1,5 @@
 using System;
+using ServiceStack.DataAnnotations;
 using ServiceStack.DesignPatterns.Model;
 
 namespace ServiceStack.Messaging
@@ -10,16 +11,22 @@ namespace ServiceStack.Messaging
 
 		long Priority { get; set; }
 
-		int RetryAttempts { get; }
+		int RetryAttempts { get; set; }
 
-		string ReplyTo { get; set; }
+		Guid? ReplyId { get; set; }
 
-		MessageError Error { get; }
+        string ReplyTo { get; set; }
+
+        int Options { get; set; }
+
+        MessageError Error { get; set; }
+
+		object Body { get; set; }
 	}
 
-	public interface IMessage<T>
+    public interface IMessage<T>
 		: IMessage
 	{
-		T Body { get; }
+		T GetBody();
 	}
 }

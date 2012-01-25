@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.IO;
 using System.Net;
+using Funq;
 using ServiceStack.ServiceHost;
 
 namespace ServiceStack.ServiceInterface.Testing
@@ -15,6 +16,7 @@ namespace ServiceStack.ServiceInterface.Testing
 			this.Headers = new NameValueCollection();
 			this.Cookies = new Dictionary<string, Cookie>();
 			this.Items = new Dictionary<string, object>();
+			this.Container = new Container();
 		}
 
 		public MockHttpRequest(string operationName, string httpMethod,
@@ -32,9 +34,21 @@ namespace ServiceStack.ServiceInterface.Testing
 			this.FormData = formData ?? new NameValueCollection();
 		}
 
+		public object OriginalRequest
+		{
+			get { return null; }
+		}
+
+		public T TryResolve<T>()
+		{
+			return Container.TryResolve<T>();
+		}
+
+		public Container Container { get; set; }
 		public string OperationName { get; set; }
 		public string ContentType { get; set; }
 		public string HttpMethod { get; set; }
+		public string UserAgent { get; set; }
 
 		public IDictionary<string, Cookie> Cookies { get; set; }
 
@@ -93,6 +107,14 @@ namespace ServiceStack.ServiceInterface.Testing
 
 		public IFile[] Files { get; set; }
 
-		public string ApplicationFilePath { get; set; }
+        public string ApplicationFilePath { get; set; }
+
+        public void AddSessionCookies()
+        {
+            var permSessionId = Convert.ToBase64String(Guid.NewGuid().ToByteArray());
+            this.Cookies[SessionFeature.PermanentSessionId] = new Cookie(SessionFeature.PermanentSessionId, permSessionId);
+            var sessionId = Convert.ToBase64String(Guid.NewGuid().ToByteArray());
+            this.Cookies[SessionFeature.SessionId] = new Cookie(SessionFeature.SessionId, sessionId);
+        }
 	}
 }

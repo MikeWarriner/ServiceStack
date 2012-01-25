@@ -25,7 +25,7 @@ namespace ServiceStack.ServiceHost.Tests.Formats
 		[TestFixtureSetUp]
 		public void TestFixtureSetUp()
 		{
-			var json = "~/AppData/ALFKI.json".MapAbsolutePath().ReadAllText();
+			var json = "~/AppData/ALFKI.json".MapProjectPath().ReadAllText();
 			response = JsonSerializer.DeserializeFromString<CustomerDetailsResponse>(json);
 		}
 
@@ -42,7 +42,7 @@ namespace ServiceStack.ServiceHost.Tests.Formats
 			public AppHost()
 			{
 				this.Config = new EndpointHostConfig {
-					MarkdownSearchPath = "~".MapAbsolutePath(),
+					MarkdownSearchPath = "~".MapProjectPath(),
 					MarkdownReplaceTokens = new Dictionary<string, string>(),
 					IgnoreFormatsInMetadata = new HashSet<string>(),
 				};
@@ -50,6 +50,16 @@ namespace ServiceStack.ServiceHost.Tests.Formats
 				this.ResponseFilters = new List<Action<IHttpRequest, IHttpResponse, object>>();
 				this.HtmlProviders = new List<StreamSerializerResolverDelegate>();
 				this.CatchAllHandlers = new List<HttpHandlerResolverDelegate>();
+			}
+
+			public void Register<T>(T instance)
+			{
+				throw new NotImplementedException();
+			}
+
+			public void RegisterAs<T, TAs>() where T : TAs
+			{
+				throw new NotImplementedException();
 			}
 
 			public T TryResolve<T>()
@@ -68,6 +78,11 @@ namespace ServiceStack.ServiceHost.Tests.Formats
 			public List<HttpHandlerResolverDelegate> CatchAllHandlers { get; set; }
 
 			public EndpointHostConfig Config { get; set; }
+
+			public void RegisterService(Type serviceType, params string[] atRestPaths)
+			{
+				Config.ServiceManager.RegisterService(serviceType);
+			}
 		}
 
 		public string GetHtml(object dto, string format)
@@ -78,7 +93,7 @@ namespace ServiceStack.ServiceHost.Tests.Formats
 				QueryString = new NameValueCollection(),
 			};
 			httpReq.QueryString.Add("format", format);
-			var requestContext = new HttpRequestContext((IHttpRequest)httpReq, dto);
+			var requestContext = new HttpRequestContext(httpReq, null, dto);
 			using (var ms = new MemoryStream())
 			{
 				var httpRes = new HttpResponseStreamWrapper(ms);
@@ -104,7 +119,7 @@ namespace ServiceStack.ServiceHost.Tests.Formats
 			//File.WriteAllText("~/AppData/TestsResults/CustomerDetailsResponse.htm".MapAbsolutePath(), html);
 
 			Assert.That(html.StartsWith("<!doctype html>"));
-			Assert.That(html.Contains("Customer Orders Total:  &#163;4,596.20"));
+			Assert.That(html.Contains("Customer Orders Total:  $4,596.20"));
 		}
 
 		[Test]
@@ -115,7 +130,7 @@ namespace ServiceStack.ServiceHost.Tests.Formats
 			Console.WriteLine(html);
 
 			Assert.That(html.TrimStart().StartsWith("<h1>Maria Anders Customer Details (Berlin, Germany)</h1>"));
-			Assert.That(html.Contains("Customer Orders Total:  &#163;4,596.20"));
+			Assert.That(html.Contains("Customer Orders Total:  $4,596.20"));
 		}
 
 		[Test]
@@ -128,7 +143,7 @@ namespace ServiceStack.ServiceHost.Tests.Formats
 
 			Assert.That(html.StartsWith("<!doctype html>"));
 			Assert.That(html.Contains("# Maria Anders Customer Details (Berlin, Germany)"));
-			Assert.That(html.Contains("Customer Orders Total:  &#163;4,596.20"));
+			Assert.That(html.Contains("Customer Orders Total:  $4,596.20"));
 		}
 
 		[Test]
@@ -139,7 +154,7 @@ namespace ServiceStack.ServiceHost.Tests.Formats
 			Console.WriteLine(html);
 
 			Assert.That(html.TrimStart().StartsWith("# Maria Anders Customer Details (Berlin, Germany)"));
-			Assert.That(html.Contains("Customer Orders Total:  &#163;4,596.20"));
+			Assert.That(html.Contains("Customer Orders Total:  $4,596.20"));
 		}
 
 
@@ -163,7 +178,13 @@ namespace ServiceStack.ServiceHost.Tests.Formats
 			public MockHttpResponse()
 			{
 				this.Headers = new Dictionary<string, string>();
-				MemoryStream = new MemoryStream();
+				this.MemoryStream = new MemoryStream();
+				this.Cookies = new Cookies(this);
+			}
+
+			public object OriginalResponse
+			{
+				get { throw new NotImplementedException(); }
 			}
 
 			public int StatusCode { set; private get; }
@@ -173,6 +194,8 @@ namespace ServiceStack.ServiceHost.Tests.Formats
 			public string ContentType { get; set; }
 
 			private Dictionary<string, string> Headers { get; set; }
+
+			public ICookies Cookies { get; set; }
 
 			public void AddHeader(string name, string value)
 			{
@@ -201,6 +224,16 @@ namespace ServiceStack.ServiceHost.Tests.Formats
 				this.IsClosed = true;
 			}
 
+			public void End()
+			{
+				Close();
+			}
+
+			public void Flush()
+			{
+				MemoryStream.Flush();
+			}
+
 			public bool IsClosed { get; private set; }
 		}
 
@@ -210,14 +243,14 @@ namespace ServiceStack.ServiceHost.Tests.Formats
 			var markdownHandler = new MarkdownHandler {
 				MarkdownFormat = markdownFormat,
 				PathInfo = "/AppData/NoTemplate/Static.md",
-				FilePath = "~/AppData/NoTemplate/Static.md".MapAbsolutePath(),
+				FilePath = "~/AppData/NoTemplate/Static.md".MapProjectPath(),
 			};
 			var httpReq = new MockHttpRequest { QueryString = new NameValueCollection() };
 			var httpRes = new MockHttpResponse();
 			markdownHandler.ProcessRequest(httpReq, httpRes, "Static");
 
 			var expectedHtml = markdownFormat.Transform(
-				File.ReadAllText("~/AppData/NoTemplate/Static.md".MapAbsolutePath()));
+				File.ReadAllText("~/AppData/NoTemplate/Static.md".MapProjectPath()));
 
 			httpRes.Close();
 			Assert.That(httpRes.Contents, Is.EqualTo(expectedHtml));

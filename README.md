@@ -1,4 +1,4 @@
-[Join the new google group](http://groups.google.com/group/servicestack) or
+Join the [google group](http://groups.google.com/group/servicestack) or
 follow [@demisbellot](http://twitter.com/demisbellot) and [@ServiceStack](http://twitter.com/servicestack)
 for twitter updates.
 
@@ -8,76 +8,83 @@ For more info check out [servicestack.net](http://www.servicestack.net).
 
 Simple REST service example
 ===========================
-	
-	//Web Service Host Configuration
-	public class AppHost : AppHostBase
+
+```csharp
+//Web Service Host Configuration
+public class AppHost : AppHostBase
+{
+	public AppHost() : base("Backbone.js TODO", typeof(TodoService).Assembly) {}
+
+	public override void Configure(Funq.Container container)
 	{
-		public AppHost() : base("Backbone.js TODO", typeof(TodoService).Assembly) {}
+		//Register Web Service dependencies
+		container.Register(new TodoRepository());
 
-		public override void Configure(Funq.Container container)
-		{
-			//Register Web Service dependencies
-			container.Register(new TodoRepository());
-
-			//Register user-defined REST-ful routes			
-			Routes
-			  .Add<Todo>("/todos")
-			  .Add<Todo>("/todos/{Id}");
-		}
+		//Register user-defined REST-ful routes			
+		Routes
+		  .Add<Todo>("/todos")
+		  .Add<Todo>("/todos/{Id}");
 	}
-	
+}
 
-	//REST Resource DTO
-	public class Todo 
+
+//REST Resource DTO
+public class Todo 
+{
+	public long Id { get; set; }
+	public string Content { get; set; }
+	public int Order { get; set; }
+	public bool Done { get; set; }
+}
+
+//Todo REST Service implementation
+public class TodoService : RestServiceBase<Todo>
+{
+	public TodoRepository Repository { get; set; }  //Injected by IOC
+
+	public override object OnGet(Todo request)
 	{
-		public long Id { get; set; }
-		public string Content { get; set; }
-		public int Order { get; set; }
-		public bool Done { get; set; }
-	}
+		if (request.Id != default(long))
+			return Repository.GetById(request.Id);
 
-	//Todo REST Service implementation
-	public class TodoService : RestServiceBase<Todo>
-	{
-		public TodoRepository Repository { get; set; }  //Injected by IOC
-
-		public override object OnGet(Todo request)
-		{
-			if (request.Id != default(long))
-				return Repository.GetById(request.Id);
-
-			return Repository.GetAll();
-		}
-
-		//Called for both new and updated TODOs
-		public override object OnPost(Todo todo)
-		{
-			return Repository.Store(todo);
-		}
-
-		public override object OnDelete(Todo request)
-		{
-			Repository.DeleteById(request.Id);
-			return null;
-		}
+		return Repository.GetAll();
 	}
 
+	public override object OnPost(Todo todo)
+	{
+		return Repository.Store(todo);
+	}
+
+	public override object OnPut(Todo todo)
+	{
+		return Repository.Store(todo);
+	}
+
+	public override object OnDelete(Todo request)
+	{
+		Repository.DeleteById(request.Id);
+		return null;
+	}
+}
+```
 
 ### Calling the above TODO REST service from any C#/.NET Client
-    //no code-gen required, can re-use above DTO's
 
-    var restClient = new JsonServiceClient("http://localhost/Backbone.Todo");
-    var all = restClient.Get<List<Todo>>("/todos"); // Count = 0
+```csharp
+//no code-gen required, can re-use above DTO's
 
-    var todo = restClient.Post<Todo>("/todos", new Todo { Content = "New TODO", Order = 1 }); //todo.Id = 1
-    all = restClient.Get<List<Todo>>("/todos"); // Count = 1
+var restClient = new JsonServiceClient("http://localhost/Backbone.Todo");
+var all = restClient.Get<List<Todo>>("/todos"); // Count = 0
 
-    todo.Content = "Updated TODO";
-    todo = restClient.Post<Todo>("/todos", todo); // todo.Content = Updated TODO
-    
-    restClient.Delete<Todo>("/todos/" + todo.Id);
-    all = restClient.Get<List<Todo>>("/todos"); // Count = 0
+var todo = restClient.Post<Todo>("/todos", new Todo { Content = "New TODO", Order = 1 }); //todo.Id = 1
+all = restClient.Get<List<Todo>>("/todos"); // Count = 1
 
+todo.Content = "Updated TODO";
+todo = restClient.Post<Todo>("/todos", todo); // todo.Content = Updated TODO
+
+restClient.Delete<Todo>("/todos/" + todo.Id);
+all = restClient.Get<List<Todo>>("/todos"); // Count = 0
+```
 
 ### Calling the TODO REST service from jQuery
 
@@ -110,11 +117,20 @@ host of functionality for free, out of the box without any configuration require
 Download
 ========
 
-To start developing web services with Service Stack we recommend starting with the ServiceStack.Examples project (includes ServiceStack.dlls):
+If you have [NuGet](http://nuget.org) installed, the easiest way to get started is to install ServiceStack via NuGet:
+
+If you want to host ServiceStack Side-by-Side with MVC: Hosted at `/api` - Create an empty MVC Web Application and
+![Install-Pacakage ServiceStack.Host.Mvc](http://www.servicestack.net/img/nuget-servicestack.host.mvc.png)
+
+Otherwise if you just want ServiceStack hosted at `/` - Create an empty ASP.NET Web Application and
+![Install-Pacakage ServiceStack.Host.Mvc](http://www.servicestack.net/img/nuget-servicestack.host.aspnet.png)
+
+
+To help get started you should also download the ServiceStack.Examples projects (includes dlls, demos and starter templates):
 
   * **[ServiceStack.Examples/downloads/](https://github.com/ServiceStack/ServiceStack.Examples/downloads)**
 
-If you already have ServiceStack and just want to download the latest release binaries get them at:
+If you prefer not to use NuGet and just want to download the latest release binaries get them at:
 
   * **[ServiceStack/downloads/](https://github.com/ServiceStack/ServiceStack/downloads)**
 
@@ -166,6 +182,7 @@ The Request and Response DTO's used to define web services in ServiceStack are s
 
 Service Stack re-uses the custom artefacts above and with zero-config and without imposing any extra burden on the developer adds discover-ability and provides hosting of your web service on a number of different physical end-points which as of today includes: XML (+REST), JSON (+REST), JSV (+REST) and SOAP 1.1 / SOAP 1.2.
 
+<a name="anti-wcf"></a>
 ### WCF the anti-DTO Web Services Framework
 Unfortunately this best-practices convention is effectively discouraged by Microsoft's WCF SOAP Web Services framework as they encourage you to develop API-specific RPC method calls by mandating the use method signatures to define your web services API. This results in less re-usable, more client-sepcfic APIs that encourages more remote method calls. 
 
@@ -261,6 +278,35 @@ Which will change your urls will now look like:
 	http://localhost/servicestack.ashx/xml/syncreply/Hello?Name=World
 
 
+# Contributors 
+A big thanks to GitHub and all of ServiceStack's contributors:
+
+ - [mythz](https://github.com/mythz) (Demis Bellot)
+ - [bman654](https://github.com/bman654) (Brandon Wallace)
+ - [Iristyle](https://github.com/Iristyle) (Ethan Brown)
+ - [superlogical](https://github.com/superlogical) (Jake Scott)
+ - [itamar82](https://github.com/itamar82)
+ - [chadwackerman](https://github.com/chadwackerman)
+ - [derfsplat](https://github.com/derfsplat)
+ - [JohnACarruthers](https://github.com/JohnACarruthers) (John Carruthers)
+ - [mvitorino](https://github.com/mvitorino) (Miguel Vitorino)
+ - [bsiegel](https://github.com/bsiegel) (Brandon Siegel)
+ - [mdavid](https://github.com/mdavid) (M. David Peterson)
+ - [lhaussknecht](https://github.com/lhaussknecht) (Louis Haussknecht)
+ - [grendello](https://github.com/grendello) (Marek Habersack)
+ - [SteveDunn](https://github.com/SteveDunn) (Steve Dunn)
+ - [kcherenkov](https://github.com/kcherenkov) (Konstantin Cherenkov)
+ - [timryan](https://github.com/timryan) (Tim Ryan)
+ - [letssellsomebananas](https://github.com/letssellsomebananas) (Tymek Majewski)
+ - [danbarua](https://github.com/danbarua) (Dan Barua)
+ - [JonCanning](https://github.com/JonCanning) (Jon Canning)
+ - [arxisos](https://github.com/arxisos) (Steffen M)
+ - [paegun](https://github.com/paegun) (James Gorlick)
+ - [pvasek](https://github.com/pvasek) (pvasek)
+ - [derfsplat](https://github.com/derfsplat) (derfsplat)
+ - [mvitorino](https://github.com/mvitorino) (Miguel Vitorino)
+ - [justinrolston](https://github.com/justinrolston) (Justin Rolston)
+ - [danatkinson](https://github.com/danatkinson) (Dan Atkinson)
 
 ***
 

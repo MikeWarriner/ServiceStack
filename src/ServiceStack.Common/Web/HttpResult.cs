@@ -33,6 +33,9 @@ namespace ServiceStack.Common.Web
             StatusDescription = statusDescription;
         }
 
+		public HttpResult(object response, HttpStatusCode statusCode)
+			: this(response, null, statusCode) {}
+
 		public HttpResult(object response, string contentType, HttpStatusCode statusCode)
 		{
 			this.Headers = new Dictionary<string, string>();
@@ -50,14 +53,9 @@ namespace ServiceStack.Common.Web
 		{
 			this.StatusCode = HttpStatusCode.OK;
 			this.FileInfo = fileResponse;
+			this.ContentType = contentType;
 
-			if (!asAttachment)
-			{
-				this.Headers = new Dictionary<string, string> {
-					{ Web.HttpHeaders.ContentType, contentType },
-				};
-				return;
-			}
+			if (!asAttachment) return;
 
 			var headerValue =
 				"attachment; " +
@@ -68,29 +66,20 @@ namespace ServiceStack.Common.Web
 				"read-date=" + fileResponse.LastAccessTimeUtc.ToString("R");
 
 			this.Headers = new Dictionary<string, string> {
-				{ HttpHeaders.ContentType, contentType },
 				{ HttpHeaders.ContentDisposition, headerValue },
 			};
 		}
 
 		public HttpResult(Stream responseStream, string contentType)
+			: this(null, contentType, HttpStatusCode.OK)
 		{
-			this.StatusCode = HttpStatusCode.OK;
 			this.ResponseStream = responseStream;
-
-			this.Headers = new Dictionary<string, string> {
-				{ HttpHeaders.ContentType, contentType },
-			};
 		}
 
 		public HttpResult(string responseText, string contentType)
+			: this(null, contentType, HttpStatusCode.OK)
 		{
-			this.StatusCode = HttpStatusCode.OK;
 			this.ResponseText = responseText;
-
-			this.Headers = new Dictionary<string, string> {
-				{ HttpHeaders.ContentType, contentType },
-			};
 		}
 
 		public string ResponseText { get; private set; }
@@ -102,6 +91,54 @@ namespace ServiceStack.Common.Web
 		public string ContentType { get; set; }
 
 		public Dictionary<string, string> Headers { get; private set; }
+
+		public DateTime LastModified
+		{
+			set
+			{
+				this.Headers[HttpHeaders.LastModified] = value.ToUniversalTime().ToString("r");
+			}
+		}
+
+		public void SetPermanentCookie(string name, string value)
+		{
+			SetCookie(name, value, DateTime.UtcNow.AddYears(20), null);
+		}
+
+		public void SetPermanentCookie(string name, string value, string path)
+		{
+			SetCookie(name, value, DateTime.UtcNow.AddYears(20), path);
+		}
+
+		public void SetSessionCookie(string name, string value)
+		{
+			SetSessionCookie(name, value, null);
+		}
+
+		public void SetSessionCookie(string name, string value, string path)
+		{
+			path = path ?? "/";
+			this.Headers[HttpHeaders.SetCookie] = string.Format("{0}={1};path=" + path, name, value);
+		}
+
+		public void SetCookie(string name, string value, TimeSpan expiresIn, string path)
+		{
+			var expiresAt = DateTime.UtcNow.Add(expiresIn);
+			SetCookie(name, value, expiresAt, path);
+		}
+
+		public void SetCookie(string name, string value, DateTime expiresAt, string path)
+		{
+			path = path ?? "/";
+			var cookie = string.Format("{0}={1};expires={2};path={3}", name, value, expiresAt.ToString("R"), path);
+			this.Headers[HttpHeaders.SetCookie] = cookie;
+		}
+
+		public void DeleteCookie(string name)
+		{
+			var cookie = string.Format("{0}=;expires={1};path=/", name, DateTime.UtcNow.AddDays(-1).ToString("R"));
+			this.Headers[HttpHeaders.SetCookie] = cookie; 
+		}
 
 		public IDictionary<string, string> Options
 		{
@@ -166,5 +203,7 @@ namespace ServiceStack.Common.Web
 				}
 			};
 		}
+
+
 	}
 }

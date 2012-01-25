@@ -18,6 +18,8 @@ namespace ServiceStack.ServiceHost
 
 		public ServiceController(Func<IEnumerable<Type>> resolveServicesFn)
 		{
+			this.RequestServiceTypeMap = new Dictionary<Type, Type>();
+			this.ResponseServiceTypeMap = new Dictionary<Type, Type>();
 			this.AllOperationTypes = new List<Type>();
 			this.OperationTypes = new List<Type>();
 			this.ServiceTypes = new HashSet<Type>();
@@ -35,6 +37,10 @@ namespace ServiceStack.ServiceHost
 		private readonly ServiceRoutes routes;
 
 		public bool EnableAccessRestrictions { get; set; }
+
+		public Dictionary<Type, Type> ResponseServiceTypeMap { get; set; }
+
+		public Dictionary<Type, Type> RequestServiceTypeMap { get; set; }
 
 		public IList<Type> AllOperationTypes { get; protected set; }
 
@@ -69,7 +75,13 @@ namespace ServiceStack.ServiceHost
 		{
 			foreach (var serviceType in ResolveServicesFn())
 			{
-				if (serviceType.IsAbstract || serviceType.ContainsGenericParameters) continue;
+				RegisterService(serviceFactoryFn, serviceType);
+			}
+		}
+
+		public void RegisterService(ITypeFactory serviceFactoryFn, Type serviceType)
+		{
+			if (serviceType.IsAbstract || serviceType.ContainsGenericParameters) return;
 
                 // mfw - implement publishschema to allow us to publish non-servicestack used interfaces
                 if (serviceType.GetCustomAttributes(typeof(PublishSchemaAttribute), true).Length > 0)
@@ -79,30 +91,32 @@ namespace ServiceStack.ServiceHost
                 }
                 //
 
-				foreach (var service in serviceType.GetInterfaces())
+			foreach (var service in serviceType.GetInterfaces())
+			{
+				if (!service.IsGenericType
+				    || service.GetGenericTypeDefinition() != typeof (IService<>)
+				) continue;
+
+				var requestType = service.GetGenericArguments()[0];
+
+				Register(requestType, serviceType, serviceFactoryFn);
+
+				RegisterRestPaths(requestType);
+
+				this.ServiceTypes.Add(serviceType);
+
+				this.RequestServiceTypeMap[requestType] = serviceType;
+				this.AllOperationTypes.Add(requestType);
+				this.OperationTypes.Add(requestType);
+
+				var responseTypeName = requestType.FullName + ResponseDtoSuffix;
+				var responseType = AssemblyUtils.FindType(responseTypeName);
+				if (responseType != null)
 				{
-					if (!service.IsGenericType
-						|| service.GetGenericTypeDefinition() != typeof(IService<>)
-						) continue;
-
-					var requestType = service.GetGenericArguments()[0];
-
-					Register(requestType, serviceType, serviceFactoryFn);
-
-					RegisterRestPaths(requestType);
-
-					this.ServiceTypes.Add(serviceType);
-
-					this.AllOperationTypes.Add(requestType);
-					this.OperationTypes.Add(requestType);
-
-					var responseTypeName = requestType.FullName + ResponseDtoSuffix;
-					var responseType = AssemblyUtils.FindType(responseTypeName);
-					if (responseType != null)
-					{
-						this.AllOperationTypes.Add(responseType);
-						this.OperationTypes.Add(responseType);
-					}
+					this.ResponseServiceTypeMap[responseType] = serviceType;
+					this.AllOperationTypes.Add(responseType);
+					this.OperationTypes.Add(responseType);
+				}
 
                     // mfw mod 30/08/2011
                     var responseTypeName2 = requestType.FullName.Replace("Request", ResponseDtoSuffix);
@@ -113,10 +127,9 @@ namespace ServiceStack.ServiceHost
                         this.OperationTypes.Add(responseType2);
                     }
 
-                    Log.DebugFormat("Registering {0} service '{1}' with request '{2}'",
-						(responseType != null ? "SyncReply" : "OneWay"),
-						serviceType.Name, requestType.Name);
-				}
+				Log.DebugFormat("Registering {0} service '{1}' with request '{2}'",
+					(responseType != null ? "SyncReply" : "OneWay"), 
+					serviceType.Name, requestType.Name);
 			}
 		}
 

@@ -16,6 +16,7 @@
     </FileUpgradeFlags>
     <OldToolsVersion>3.5</OldToolsVersion>
     <UpgradeBackupLocation />
+    <IsWebBootstrapper>false</IsWebBootstrapper>
     <PublishUrl>publish\</PublishUrl>
     <Install>true</Install>
     <InstallFrom>Disk</InstallFrom>
@@ -28,7 +29,6 @@
     <MapFileExtensions>true</MapFileExtensions>
     <ApplicationRevision>0</ApplicationRevision>
     <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
-    <IsWebBootstrapper>false</IsWebBootstrapper>
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
   </PropertyGroup>
@@ -77,21 +77,14 @@
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="nunit.framework, Version=2.4.8.0, Culture=neutral, PublicKeyToken=96d09a1eb7f44a77">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\lib\tests\nunit.framework.dll</HintPath>
+    <Reference Include="Moq">
+      <HintPath>..\..\lib\tests\Moq.dll</HintPath>
     </Reference>
-    <Reference Include="ServiceStack.OrmLite, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\lib\tests\ServiceStack.OrmLite.dll</HintPath>
+    <Reference Include="ServiceStack.OrmLite.SqlServer">
+      <HintPath>..\..\lib\tests\ServiceStack.OrmLite.SqlServer.dll</HintPath>
     </Reference>
-    <Reference Include="ServiceStack.OrmLite.Sqlite, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\lib\tests\ServiceStack.OrmLite.Sqlite.dll</HintPath>
-    </Reference>
-    <Reference Include="ServiceStack.Text, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\lib\ServiceStack.Text.dll</HintPath>
+    <Reference Include="ServiceStack.Redis">
+      <HintPath>..\..\lib\tests\ServiceStack.Redis.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.DataAnnotations">
@@ -112,16 +105,29 @@
     </Reference>
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
-    <Reference Include="Northwind.Common, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
-      <SpecificVersion>False</SpecificVersion>
+    <Reference Include="nunit.framework">
+      <HintPath>..\..\lib\tests\nunit.framework.dll</HintPath>
+    </Reference>
+    <Reference Include="ServiceStack.OrmLite">
+      <HintPath>..\..\lib\tests\ServiceStack.OrmLite.dll</HintPath>
+    </Reference>
+    <Reference Include="ServiceStack.OrmLite.Sqlite">
+      <HintPath>..\..\lib\tests\ServiceStack.OrmLite.Sqlite.dll</HintPath>
+    </Reference>
+    <Reference Include="ServiceStack.Text">
+      <HintPath>..\..\lib\ServiceStack.Text.dll</HintPath>
+    </Reference>
+    <Reference Include="Northwind.Common">
       <HintPath>..\..\lib\tests\Northwind.Common.dll</HintPath>
     </Reference>
-    <Reference Include="Platform, Version=1.0.0.341, Culture=neutral, PublicKeyToken=null">
-      <SpecificVersion>False</SpecificVersion>
+    <Reference Include="Platform">
       <HintPath>..\..\lib\tests\Platform.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="FluentValidation\ErrorCodeTests.cs" />
+    <Compile Include="MappingTests.cs" />
+    <Compile Include="MessagingTests.cs" />
     <Compile Include="Models\DdnContentIngest.cs" />
     <Compile Include="EnumerableExtensionsTests.cs" />
     <Compile Include="IdUtilsTests.cs" />
@@ -136,11 +142,21 @@
     <Compile Include="Models\Shipper.cs" />
     <Compile Include="Models\ShipperFactory.cs" />
     <Compile Include="Models\BuiltInsFactory.cs" />
+    <Compile Include="OAuth\OAuthUserSessionTests.cs" />
+    <Compile Include="OAuth\RegistrationServiceTests.cs" />
+    <Compile Include="OAuth\CredentialsServiceTests.cs" />
+    <Compile Include="OAuth\MockAuthHttpGateway.cs" />
+    <Compile Include="OAuth\OAuthUserSessionWithoutTestSourceTests.cs" />
     <Compile Include="Perf\DateTimePerf.cs" />
     <Compile Include="Perf\IdUtilsPerf.cs" />
     <Compile Include="Perf\PropertyAccessorPerf.cs" />
     <Compile Include="Perf\ReflectionTests.cs" />
     <Compile Include="Perf\TextSerializerComparisons.cs" />
+    <Compile Include="Properties\Settings.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <DependentUpon>Settings.settings</DependentUpon>
+    </Compile>
     <Compile Include="ReflectionExtensionsTests.cs" />
     <Compile Include="Reflection\PropertyAccessorTests.cs" />
     <Compile Include="Expressions\DelegateFactoryTests.cs" />
@@ -165,11 +181,8 @@
     <Compile Include="StringExtensionTests.cs" />
     <Compile Include="ReflectionUtilTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Support\InvokeSimpleCommandsTests.cs" />
-    <Compile Include="Support\ModelWithFieldsOfDifferentTypes.cs" />
-    <Compile Include="Support\ModelWithOnlyStringFields.cs" />
-    <Compile Include="Support\PathInfoTests.cs" />
     <Compile Include="Text\AdhocJsTests.cs" />
+    <Compile Include="OAuth\OAuthUserSessionTestsBase.cs" />
     <Compile Include="Xlinq\XlinqExtensionsTests.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -181,6 +194,14 @@
       <Project>{42E1C8C0-A163-44CC-92B1-8F416F2C0B01}</Project>
       <Name>ServiceStack.Interfaces</Name>
     </ProjectReference>
+    <ProjectReference Include="..\..\src\ServiceStack.ServiceInterface\ServiceStack.ServiceInterface.csproj">
+      <Project>{5A315F92-80D2-4C60-A5A4-22E027AC7E7E}</Project>
+      <Name>ServiceStack.ServiceInterface</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\src\ServiceStack\ServiceStack.csproj">
+      <Project>{680A1709-25EB-4D52-A87F-EE03FFD94BAA}</Project>
+      <Name>ServiceStack</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <Content Include="sqlite3.dll">
@@ -188,6 +209,7 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
+    <Folder Include="App_Data\" />
     <Folder Include="Models\DdnContentIngest\" />
   </ItemGroup>
   <ItemGroup>
@@ -201,11 +223,28 @@
       <ProductName>.NET Framework 3.5 SP1</ProductName>
       <Install>true</Install>
     </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Sql.Server.Express.10.0">
+      <Visible>False</Visible>
+      <ProductName>SQL Server 2008 Express</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
     <BootstrapperPackage Include="Microsoft.Windows.Installer.3.1">
       <Visible>False</Visible>
       <ProductName>Windows Installer 3.1</ProductName>
       <Install>true</Install>
     </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Windows.Installer.4.5">
+      <Visible>False</Visible>
+      <ProductName>Windows Installer 4.5</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="app.config" />
+    <None Include="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

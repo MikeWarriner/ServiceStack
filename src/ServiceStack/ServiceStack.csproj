@@ -63,11 +63,24 @@
     <WarningLevel>4</WarningLevel>
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'MONOTOUCH|AnyCPU'">
+    <OutputPath>bin\MONOTOUCH\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <DocumentationFile>bin\Release\ServiceStack.XML</DocumentationFile>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <CodeAnalysisLogFile>bin\Release\ServiceStack.dll.CodeAnalysisLog.xml</CodeAnalysisLogFile>
+    <CodeAnalysisUseTypeNameInSuppression>true</CodeAnalysisUseTypeNameInSuppression>
+    <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSetDirectories>;C:\Program Files\Microsoft Visual Studio 10.0\Team Tools\Static Analysis Tools\\Rule Sets</CodeAnalysisRuleSetDirectories>
+    <CodeAnalysisIgnoreBuiltInRuleSets>false</CodeAnalysisIgnoreBuiltInRuleSets>
+    <CodeAnalysisRuleDirectories>;C:\Program Files\Microsoft Visual Studio 10.0\Team Tools\Static Analysis Tools\FxCop\\Rules</CodeAnalysisRuleDirectories>
+    <CodeAnalysisIgnoreBuiltInRules>false</CodeAnalysisIgnoreBuiltInRules>
+  </PropertyGroup>
   <ItemGroup>
-    <Reference Include="ServiceStack.Text, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\lib\ServiceStack.Text.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Configuration" />
     <Reference Include="System.Core">
@@ -88,6 +101,9 @@
     </Reference>
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
+    <Reference Include="ServiceStack.Text">
+      <HintPath>..\..\lib\ServiceStack.Text.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CacheAccess.Providers\BasicPersistenceProviderCacheBase.cs" />
@@ -104,6 +120,7 @@
     <Compile Include="CacheAccess.Providers\MultiCacheClient.cs" />
     <Compile Include="CacheAccess.Providers\PersistenceProviderCache.cs" />
     <Compile Include="CacheAccess.Providers\XmlCacheManager.cs" />
+    <Compile Include="Configuration\AppSettings.cs" />
     <Compile Include="Configuration\ConfigurationResourceManager.cs" />
     <Compile Include="Configuration\ConfigUtils.cs" />
     <Compile Include="Funq\Action.cs" />
@@ -121,6 +138,48 @@
     <Compile Include="Funq\ServiceEntry.Generic.cs" />
     <Compile Include="Funq\ServiceKey.cs" />
     <Compile Include="Funq\Syntax.cs" />
+    <Compile Include="MiniProfiler\BaseProfilerProvider.cs" />
+    <Compile Include="MiniProfiler\Data\ExecuteType.cs" />
+    <Compile Include="MiniProfiler\Data\IDbProfiler.cs" />
+    <Compile Include="MiniProfiler\Data\Link.cs" />
+    <Compile Include="MiniProfiler\Data\ProfiledDbCommand.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="MiniProfiler\Data\ProfiledDbConnection.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="MiniProfiler\Data\ProfiledDbDataReader.cs" />
+    <Compile Include="MiniProfiler\Data\ProfiledDbProviderFactory.cs" />
+    <Compile Include="MiniProfiler\Data\ProfiledDbTransaction.cs" />
+    <Compile Include="MiniProfiler\Helpers\ExtensionMethods.cs" />
+    <Compile Include="MiniProfiler\Helpers\HaackFormatter.cs" />
+    <Compile Include="MiniProfiler\Helpers\IStopwatch.cs" />
+    <Compile Include="Data\SqlMapper.cs" />
+    <Compile Include="MiniProfiler\Helpers\StackTraceSnippet.cs" />
+    <Compile Include="MiniProfiler\HtmlString.cs" />
+    <Compile Include="MiniProfiler\IpAddressProvider.cs" />
+    <Compile Include="MiniProfiler\IProfilerProvider.cs" />
+    <Compile Include="MiniProfiler\IUserProvider.cs" />
+    <Compile Include="MiniProfiler\Profiler.cs" />
+    <Compile Include="MiniProfiler\MiniProfiler.IDbProfiler.cs" />
+    <Compile Include="MiniProfiler\MiniProfiler.Settings.cs" />
+    <Compile Include="MiniProfiler\SqlFormatters\InlineFormatter.cs" />
+    <Compile Include="MiniProfiler\SqlFormatters\ISqlFormatter.cs" />
+    <Compile Include="MiniProfiler\SqlFormatters\OracleFormatter.cs" />
+    <Compile Include="MiniProfiler\SqlFormatters\SqlServerFormatter.cs" />
+    <Compile Include="MiniProfiler\SqlProfiler.cs" />
+    <Compile Include="MiniProfiler\SqlTiming.cs" />
+    <Compile Include="MiniProfiler\SqlTimingParameter.cs" />
+    <Compile Include="MiniProfiler\Storage\DatabaseStorageBase.cs" />
+    <Compile Include="MiniProfiler\Storage\HttpRuntimeCacheStorage.cs" />
+    <Compile Include="MiniProfiler\Storage\IStorage.cs" />
+    <Compile Include="MiniProfiler\Storage\SqlServerStorage.cs" />
+    <Compile Include="MiniProfiler\Timing.cs" />
+    <Compile Include="MiniProfiler\UI\MiniProfilerHandler.cs" />
+    <Compile Include="MiniProfiler\WebRequestProfilerProvider.cs" />
+    <Compile Include="MiniProfiler\WebRequestProfilerProvider.Settings.cs" />
+    <Compile Include="ServiceHost\Cookies.cs" />
+    <Compile Include="WebHost.EndPoints\AppHostExtensions.cs" />
     <Compile Include="Markdown\CachedExpressionCompiler.cs" />
     <Compile Include="Markdown\DynamicTypeGenerator .cs" />
     <Compile Include="Markdown\ExpressionHelper.cs" />
@@ -143,7 +202,7 @@
     <Compile Include="Markdown\ViewDataInfo.cs" />
     <Compile Include="Properties\Resources.Designer.cs" />
     <Compile Include="Markdown\ITemplatePage.cs" />
-    <Compile Include="ServiceHost\ExpressionTypeFunqContainer.cs" />
+    <Compile Include="ServiceHost\AutoWireContainer.cs" />
     <Compile Include="ServiceHost\FileExtensions.cs" />
     <Compile Include="ServiceHost\HttpFile.cs" />
     <Compile Include="ServiceHost\HttpRequestAuthentication.cs" />
@@ -222,6 +281,7 @@
     <Compile Include="WebHost.EndPoints\EndpointHost.cs" />
     <Compile Include="WebHost.EndPoints\EndpointHostConfig.cs" />
     <Compile Include="WebHost.EndPoints\Support\SoapHandler.cs" />
+    <Compile Include="WebHost.EndPoints\Utils\FilterAttributeCache.cs" />
     <Compile Include="WebHost.EndPoints\WebServerType.cs" />
     <Compile Include="WebHost.EndPoints\XmlSyncReplyHandler.cs" />
     <Compile Include="WebHost.EndPoints\Metadata\IndexMetadataHandler.cs" />
@@ -247,22 +307,21 @@
     <Compile Include="WebHost.EndPoints\Support\Templates\ListTemplate.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\ServiceStack.Common\ServiceStack.Common.csproj">
-      <Project>{982416DB-C143-4028-A0C3-CF41892D18D3}</Project>
-      <Name>ServiceStack.Common</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\ServiceStack.Interfaces\ServiceStack.Interfaces.csproj">
-      <Project>{42E1C8C0-A163-44CC-92B1-8F416F2C0B01}</Project>
-      <Name>ServiceStack.Interfaces</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <Compile Include="Funq\Container.Adapter.cs" />
     <None Include="Funq\Container.xdoc" />
+    <EmbeddedResource Include="MiniProfiler\UI\includes.tmpl">
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <None Include="MiniProfiler\UI\includes.tmpl.orig" />
     <None Include="README.md" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Funq\License.txt" />
+    <None Include="MiniProfiler\UI\jquery.tmpl.beta1.js.orig" />
+    <None Include="MiniProfiler\UI\jquery.1.6.2.js.orig" />
+    <EmbeddedResource Include="MiniProfiler\UI\includes.css" />
+    <EmbeddedResource Include="MiniProfiler\UI\includes.js" />
+    <EmbeddedResource Include="MiniProfiler\UI\jquip.all.js" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include="Microsoft.Net.Client.3.5">
@@ -293,4 +352,14 @@
   <Target Name="AfterBuild">
   </Target>
   -->
+  <ItemGroup>
+    <ProjectReference Include="..\ServiceStack.Common\ServiceStack.Common.csproj">
+      <Project>{982416DB-C143-4028-A0C3-CF41892D18D3}</Project>
+      <Name>ServiceStack.Common</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\ServiceStack.Interfaces\ServiceStack.Interfaces.csproj">
+      <Project>{42E1C8C0-A163-44CC-92B1-8F416F2C0B01}</Project>
+      <Name>ServiceStack.Interfaces</Name>
+    </ProjectReference>
+  </ItemGroup>
 </Project>

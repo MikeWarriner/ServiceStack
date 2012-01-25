@@ -12,6 +12,7 @@ using System;
 using System.Collections.Generic;
 using ServiceStack.Common.Extensions;
 using ServiceStack.DesignPatterns.Translator;
+using ServiceStack.FluentValidation;
 using ServiceStack.ServiceHost;
 using ServiceStack.Validation;
 
@@ -20,36 +21,51 @@ namespace ServiceStack.ServiceInterface.ServiceModel
 	/// <summary>
 	/// Translates a ValidationResult into a ResponseStatus DTO fragment.
 	/// </summary>
-	public class ResponseStatusTranslator 
-		: ITranslator<ResponseStatus, ValidationResult>
+	public class ResponseStatusTranslator
+		: ITranslator<ResponseStatus, ValidationErrorResult>
 	{
 		public static readonly ResponseStatusTranslator Instance 
 			= new ResponseStatusTranslator();
 
 		public ResponseStatus Parse(Exception exception)
 		{
+			var validationError = exception as ValidationError;
+			if (validationError != null)
+			{
+				return this.Parse(validationError);
+			}
+
 			var validationException = exception as ValidationException;
 			if (validationException != null)
 			{
-				return this.Parse(validationException); 
+				return this.Parse(validationException);
 			}
 
+
 			var httpError = exception as IHttpError;
-			return httpError != null 
-				? CreateErrorResponse(httpError.ErrorCode, httpError.Message) 
+			return httpError != null
+				? CreateErrorResponse(httpError.ErrorCode, httpError.Message)
 				: CreateErrorResponse(exception.GetType().Name, exception.Message);
 		}
 
-		public ResponseStatus Parse(ValidationException validationException)
+		public ResponseStatus Parse(ValidationError validationException)
 		{
 			return CreateErrorResponse(validationException.ErrorCode, validationException.Message, validationException.Violations);
 		}
 
-		public ResponseStatus Parse(ValidationResult validationResult)
+		public ResponseStatus Parse(ValidationException validationException)
+		{
+			var errors = validationException.Errors.ConvertAll(x => 
+				new ValidationErrorField(x.ErrorCode, x.PropertyName, x.ErrorMessage));
+
+			return CreateErrorResponse(typeof(ValidationException).Name, validationException.Message, errors);
+		}
+
+		public ResponseStatus Parse(ValidationErrorResult validationResult)
 		{
 			return validationResult.IsValid
-					? CreateSuccessResponse(validationResult.SuccessMessage)
-					: CreateErrorResponse(validationResult.ErrorCode, validationResult.ErrorMessage, validationResult.Errors);
+				? CreateSuccessResponse(validationResult.SuccessMessage)
+				: CreateErrorResponse(validationResult.ErrorCode, validationResult.ErrorMessage, validationResult.Errors);
 		}
 
 		public static ResponseStatus CreateSuccessResponse(string message)
@@ -78,19 +94,18 @@ namespace ServiceStack.ServiceInterface.ServiceModel
 		/// <param name="errorMessage">The error message.</param>
 		/// <param name="validationErrors">The validation errors.</param>
 		/// <returns></returns>
-		public static ResponseStatus CreateErrorResponse(string errorCode, string errorMessage, IEnumerable<ValidationError> validationErrors)
+		public static ResponseStatus CreateErrorResponse(string errorCode, string errorMessage, IEnumerable<ValidationErrorField> validationErrors)
 		{
-			var to = new ResponseStatus
-			{
+			var to = new ResponseStatus {
 				ErrorCode = errorCode,
 				Message = errorMessage,
+				Errors = new List<ResponseError>(),
 			};
 			if (validationErrors != null)
 			{
 				foreach (var validationError in validationErrors)
 				{
-					var error = new ResponseError
-					{
+					var error = new ResponseError {
 						ErrorCode = validationError.ErrorCode,
 						FieldName = validationError.FieldName,
 						Message = validationError.ErrorMessage,

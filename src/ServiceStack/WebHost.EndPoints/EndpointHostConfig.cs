@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Linq;
+using System.Net;
 using System.Runtime.Serialization;
+using System.Web;
 using System.Web.Configuration;
 using System.Xml.Linq;
 using MarkdownSharp;
@@ -58,8 +60,9 @@ namespace ServiceStack.WebHost.Endpoints
 						WebHostPhysicalPath = "~".MapServerPath(),
 						ServiceStackHandlerFactoryPath = ServiceStackPath,
 						MetadataRedirectPath = null,
-						DefaultContentType = ContentType.Json,
+						DefaultContentType = null,
 						AllowJsonpRequests = true,
+						DebugMode = false,
 						DefaultDocuments = new List<string> {
 							"default.htm",
 							"default.html",
@@ -81,6 +84,7 @@ namespace ServiceStack.WebHost.Endpoints
 						DebugAspNetHostEnvironment = Env.IsMono ? "FastCGI" : "IIS7",
 						DebugHttpListenerHostEnvironment = Env.IsMono ? "XSP" : "WebServer20",
 						EnableFeatures = Feature.All,
+						WriteErrorsToResponse = true,
 						MarkdownOptions = new MarkdownOptions(),
 						MarkdownBaseType = typeof(MarkdownViewBase),
 						MarkdownGlobalHelpers = new Dictionary<string, Type>(),
@@ -91,7 +95,9 @@ namespace ServiceStack.WebHost.Endpoints
 							{ "image/gif", TimeSpan.FromHours(1) },
 							{ "image/png", TimeSpan.FromHours(1) },
 							{ "image/jpeg", TimeSpan.FromHours(1) },
-						}
+						},
+						RawHttpHandlers = new List<Func<IHttpRequest, IHttpHandler>>(),
+						CustomHttpHandlers = new Dictionary<HttpStatusCode, IHttpHandler>(),
 					};
 
 					if (instance.ServiceStackHandlerFactoryPath == null)
@@ -129,11 +135,13 @@ namespace ServiceStack.WebHost.Endpoints
 			this.ServiceStackHandlerFactoryPath = instance.ServiceStackHandlerFactoryPath;
 			this.DefaultContentType = instance.DefaultContentType;
 			this.AllowJsonpRequests = instance.AllowJsonpRequests;
+			this.DebugMode = instance.DebugMode;
 			this.DefaultDocuments = instance.DefaultDocuments;
 			this.GlobalResponseHeaders = instance.GlobalResponseHeaders;
 			this.IgnoreFormatsInMetadata = instance.IgnoreFormatsInMetadata;
 			this.AllowFileExtensions = instance.AllowFileExtensions;
 			this.EnableFeatures = instance.EnableFeatures;
+			this.WriteErrorsToResponse = instance.WriteErrorsToResponse;
 			this.MarkdownOptions = instance.MarkdownOptions;
 			this.MarkdownBaseType = instance.MarkdownBaseType;
 			this.MarkdownGlobalHelpers = instance.MarkdownGlobalHelpers;
@@ -142,6 +150,8 @@ namespace ServiceStack.WebHost.Endpoints
 			this.RazorSearchPath = instance.RazorSearchPath;
 			this.RazorBaseType = instance.RazorBaseType;
 			this.AddMaxAgeForStaticMimeTypes = instance.AddMaxAgeForStaticMimeTypes;
+			this.RawHttpHandlers = instance.RawHttpHandlers;
+			this.CustomHttpHandlers = instance.CustomHttpHandlers;
 		}
 
 		private static void InferHttpHandlerPath()
@@ -214,9 +224,8 @@ namespace ServiceStack.WebHost.Endpoints
 				handlerPath = handlerPath.Replace("*", string.Empty);
 			}
 
-			instance.ServiceStackHandlerFactoryPath = null != locationPath ? locationPath
-				: string.IsNullOrEmpty(handlerPath)
-					? null : handlerPath;
+			instance.ServiceStackHandlerFactoryPath = locationPath ??
+				(string.IsNullOrEmpty(handlerPath) ? null : handlerPath);
 
 			instance.MetadataRedirectPath = PathUtils.CombinePaths(
 				null != locationPath ? instance.ServiceStackHandlerFactoryPath : handlerPath
@@ -256,7 +265,6 @@ namespace ServiceStack.WebHost.Endpoints
 		public string ServiceStackHandlerFactoryPath { get; set; }
 		public string DefaultRedirectPath { get; set; }
 		public string MetadataRedirectPath { get; set; }
-		public string NotFoundRedirectPath { get; set; }
 
 		public string WsdlServiceNamespace { get; set; }
 		public ServiceEndpointsMetadataConfig ServiceEndpointsMetadataConfig { get; set; }
@@ -265,6 +273,7 @@ namespace ServiceStack.WebHost.Endpoints
 		public bool UseBclJsonSerializers { get; set; }
 		public Dictionary<string, string> GlobalResponseHeaders { get; set; }
 		public Feature EnableFeatures { get; set; }
+		public bool WriteErrorsToResponse { get; set; }
 
 		public MarkdownOptions MarkdownOptions { get; set; }
 		public Type MarkdownBaseType { get; set; }
@@ -276,6 +285,10 @@ namespace ServiceStack.WebHost.Endpoints
 		public Type RazorBaseType { get; set; }
 
 		public Dictionary<string, TimeSpan> AddMaxAgeForStaticMimeTypes { get; set; }
+
+		public List<Func<IHttpRequest, IHttpHandler>> RawHttpHandlers { get; set; }
+
+		public Dictionary<HttpStatusCode, IHttpHandler> CustomHttpHandlers { get; set; }
 
 		private string defaultOperationNamespace;
 		public string DefaultOperationNamespace

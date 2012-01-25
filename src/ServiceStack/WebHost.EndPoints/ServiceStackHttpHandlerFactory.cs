@@ -2,9 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.IO;
+using System.Net;
 using System.Web;
 using ServiceStack.Common;
 using ServiceStack.Common.Utils;
+using ServiceStack.MiniProfiler.UI;
 using ServiceStack.ServiceHost;
 using ServiceStack.Text;
 using ServiceStack.WebHost.Endpoints.Extensions;
@@ -27,6 +29,7 @@ namespace ServiceStack.WebHost.Endpoints
 		static private readonly IHttpHandler StaticFileHandler = new StaticFileHandler();
 		private static readonly bool IsIntegratedPipeline = false;
 		private static readonly bool ServeDefaultHandler = false;
+		private static Func<IHttpRequest, IHttpHandler>[] RawHttpHandlers;
 
 		[ThreadStatic]
 		public static string DebugLastHandlerArgs;
@@ -104,33 +107,50 @@ namespace ServiceStack.WebHost.Endpoints
 
 			SetApplicationBaseUrl(EndpointHost.Config.WebHostUrl);
 
-			ForbiddenHttpHandler = new ForbiddenHttpHandler {
-				IsIntegratedPipeline = IsIntegratedPipeline,
-				WebHostPhysicalPath = WebHostPhysicalPath,
-				WebHostRootFileNames = WebHostRootFileNames,
-				ApplicationBaseUrl = ApplicationBaseUrl,
-				DefaultRootFileName = DefaultRootFileName,
-				DefaultHandler = debugDefaultHandler,
-			};
+			var httpHandlers = EndpointHost.Config.CustomHttpHandlers;
 
-			NotFoundHttpHandler = string.IsNullOrEmpty(EndpointHost.Config.NotFoundRedirectPath)
-				? (IHttpHandler)new NotFoundHttpHandler {
+			httpHandlers.TryGetValue(HttpStatusCode.Forbidden, out ForbiddenHttpHandler);
+			if (ForbiddenHttpHandler == null)
+			{
+				ForbiddenHttpHandler = new ForbiddenHttpHandler {
 					IsIntegratedPipeline = IsIntegratedPipeline,
 					WebHostPhysicalPath = WebHostPhysicalPath,
 					WebHostRootFileNames = WebHostRootFileNames,
 					ApplicationBaseUrl = ApplicationBaseUrl,
 					DefaultRootFileName = DefaultRootFileName,
 					DefaultHandler = debugDefaultHandler,
-				}
-				: new RedirectHttpHandler { RelativeUrl = EndpointHost.Config.NotFoundRedirectPath };
+				};
+			}
+
+			httpHandlers.TryGetValue(HttpStatusCode.NotFound, out NotFoundHttpHandler);
+			if (NotFoundHttpHandler == null)
+			{
+				NotFoundHttpHandler = new NotFoundHttpHandler {
+					IsIntegratedPipeline = IsIntegratedPipeline,
+					WebHostPhysicalPath = WebHostPhysicalPath,
+					WebHostRootFileNames = WebHostRootFileNames,
+					ApplicationBaseUrl = ApplicationBaseUrl,
+					DefaultRootFileName = DefaultRootFileName,
+					DefaultHandler = debugDefaultHandler,
+				};
+			}
+
+			var rawHandlers = EndpointHost.Config.RawHttpHandlers;
+			rawHandlers.Add(ReturnRequestInfo);
+			rawHandlers.Add(MiniProfilerHandler.MatchesRequest);
+			RawHttpHandlers = rawHandlers.ToArray();
 		}
 
 		// Entry point for ASP.NET
 		public IHttpHandler GetHandler(HttpContext context, string requestType, string url, string pathTranslated)
 		{
 			DebugLastHandlerArgs = requestType + "|" + url + "|" + pathTranslated;
-			var reqInfo = ReturnRequestInfo(context.Request);
-			if (reqInfo != null) return reqInfo;
+			var httpReq = new HttpRequestWrapper(pathTranslated, context.Request);
+			foreach (var rawHttpHandler in RawHttpHandlers)
+			{
+				var reqInfo = rawHttpHandler(httpReq);
+				if (reqInfo != null) return reqInfo;
+			}
 
 			var mode = EndpointHost.Config.ServiceStackHandlerFactoryPath;
 			var pathInfo = context.Request.GetPathInfo();
@@ -191,8 +211,11 @@ namespace ServiceStack.WebHost.Endpoints
 		// Entry point for HttpListener
 		public static IHttpHandler GetHandler(IHttpRequest httpReq)
 		{
-			var reqInfo = ReturnRequestInfo(httpReq);
-			if (reqInfo != null) return reqInfo;
+			foreach (var rawHttpHandler in RawHttpHandlers)
+			{
+				var reqInfo = rawHttpHandler(httpReq);
+				if (reqInfo != null) return reqInfo;
+			}
 
 			var mode = EndpointHost.Config.ServiceStackHandlerFactoryPath;
 			var pathInfo = httpReq.PathInfo;
@@ -282,7 +305,7 @@ namespace ServiceStack.WebHost.Endpoints
 		public static IHttpHandler GetHandlerForPathInfo(string httpMethod, string pathInfo, string requestPath, string filePath)
 		{
 			var pathParts = pathInfo.TrimStart('/').Split('/');
-			if (pathParts.Length == 0) return new NotFoundHttpHandler();
+			if (pathParts.Length == 0) return NotFoundHttpHandler;
 
 			var handler = GetHandlerForPathParts(pathParts);
 			if (handler != null) return handler;

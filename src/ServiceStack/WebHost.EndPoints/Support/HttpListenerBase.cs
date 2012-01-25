@@ -71,15 +71,19 @@ namespace ServiceStack.WebHost.Endpoints.Support
 			{
 				serviceManager.Init();
 				Configure(EndpointHost.Config.ServiceManager.Container);
-
-				EndpointHost.SetOperationTypes(
-					serviceManager.ServiceOperations,
-					serviceManager.AllServiceOperations
-				);
 			}
 			else
 			{
 				Configure(null);
+			}
+			if (serviceManager != null)
+			{
+				//Required for adhoc services added in Configure()
+				serviceManager.ReloadServiceOperations();
+				EndpointHost.SetOperationTypes(
+					serviceManager.ServiceOperations,
+					serviceManager.AllServiceOperations
+				);
 			}
 
 			EndpointHost.AfterInit();
@@ -216,7 +220,7 @@ namespace ServiceStack.WebHost.Endpoints.Support
 				}
 				catch (Exception errorEx)
 				{
-					error = string.Format("Error this.ProcessRequest(context)(Excetption): [{0}]: {1}", errorEx.GetType().Name, errorEx.Message);
+					error = string.Format("Error this.ProcessRequest(context)(Exception while writing error to the response): [{0}]: {1}", errorEx.GetType().Name, errorEx.Message);
 					Log.ErrorFormat(error);
 
 				}
@@ -277,9 +281,20 @@ namespace ServiceStack.WebHost.Endpoints.Support
 			}
 		}
 
+		public void RegisterAs<T, TAs>() where T : TAs
+		{
+			var autoWire = new AutoWireContainer(this.Container);
+			autoWire.RegisterAs<T, TAs>();
+		}
+
+		public void Register<T>(T instance)
+		{
+			this.Container.Register(instance);
+		}
+
 		public T TryResolve<T>()
 		{
-			return EndpointHost.Config.ServiceManager.Container.TryResolve<T>();
+			return this.Container.TryResolve<T>();
 		}
 
 		public IServiceRoutes Routes
@@ -327,6 +342,16 @@ namespace ServiceStack.WebHost.Endpoints.Support
 		public EndpointHostConfig Config
 		{
 			get { return EndpointHost.Config; }
+		}
+
+		public void RegisterService(Type serviceType, params string[] atRestPaths)
+		{
+			var genericService = EndpointHost.Config.ServiceManager.RegisterService(serviceType);
+			var requestType = genericService.GetGenericArguments()[0];
+			foreach (var atRestPath in atRestPaths)
+			{
+				this.Routes.Add(requestType, atRestPath, null, null);
+			}
 		}
 
 		public virtual void Dispose()

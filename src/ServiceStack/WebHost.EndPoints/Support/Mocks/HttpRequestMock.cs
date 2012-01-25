@@ -32,16 +32,27 @@ namespace ServiceStack.WebHost.Endpoints.Support.Mocks
 			this.InputStream = inputStream;
 		}
 
+		public object OriginalRequest
+		{
+			get { return null; }
+		}
+
+		public T TryResolve<T>()
+		{
+			return EndpointHost.AppHost.TryResolve<T>();
+		}
+
 		public string OperationName { get; set; }
 		public string ContentType { get; set; }
 		public string HttpMethod { get; set; }
+		public string UserAgent { get; set; }
 
 		public IDictionary<string, Cookie> Cookies { get; set; }
 
 		private string responseContentType;
 		public string ResponseContentType
 		{
-			get { return responseContentType ?? this.ContentType; }
+			get { return responseContentType ?? this.ContentType ?? Common.Web.ContentType.Json; }
 			set { responseContentType = value; }
 		}
 

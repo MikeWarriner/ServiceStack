@@ -6,6 +6,7 @@ using System.Reflection;
 using Funq;
 using ServiceStack.Logging;
 using ServiceStack.ServiceHost;
+using ServiceStack.Text;
 
 namespace ServiceStack.WebHost.Endpoints
 {
@@ -76,15 +77,19 @@ namespace ServiceStack.WebHost.Endpoints
 			{
 				serviceManager.Init();
 				Configure(EndpointHost.Config.ServiceManager.Container);
-
-				EndpointHost.SetOperationTypes(
-					serviceManager.ServiceOperations,
-					serviceManager.AllServiceOperations
-				);
 			}
 			else
 			{
 				Configure(null);
+			}
+			if (serviceManager != null)
+			{
+				//Required for adhoc services added in Configure()
+				serviceManager.ReloadServiceOperations();
+				EndpointHost.SetOperationTypes(
+					serviceManager.ServiceOperations,
+					serviceManager.AllServiceOperations
+				);
 			}
 
 			EndpointHost.AfterInit();
@@ -106,6 +111,17 @@ namespace ServiceStack.WebHost.Endpoints
 			config.ServiceManager.ServiceController.EnableAccessRestrictions = config.EnableAccessRestrictions;
 
 			EndpointHost.Config = config;
+		}
+
+		public void RegisterAs<T, TAs>() where T : TAs
+		{
+			var autoWire = new AutoWireContainer(this.Container);
+			autoWire.RegisterAs<T, TAs>();
+		}
+
+		public void Register<T>(T instance)
+		{
+			this.Container.Register(instance);
 		}
 
 		public T TryResolve<T>()
@@ -164,6 +180,16 @@ namespace ServiceStack.WebHost.Endpoints
 		public EndpointHostConfig Config
 		{
 			get { return EndpointHost.Config; }
+		}
+
+		public void RegisterService(Type serviceType, params string[] atRestPaths)
+		{
+			var genericService = EndpointHost.Config.ServiceManager.RegisterService(serviceType);
+			var requestType = genericService.GetGenericArguments()[0];
+			foreach (var atRestPath in atRestPaths)
+			{
+				this.Routes.Add(requestType, atRestPath, null, null);
+			}
 		}
 
 		public virtual void Dispose()

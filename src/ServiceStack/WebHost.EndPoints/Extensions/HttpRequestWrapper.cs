@@ -4,15 +4,19 @@ using System.Collections.Specialized;
 using System.IO;
 using System.Net;
 using System.Web;
+using Funq;
 using ServiceStack.Common.Utils;
 using ServiceStack.ServiceHost;
 
 namespace ServiceStack.WebHost.Endpoints.Extensions
 {
-	internal class HttpRequestWrapper
+	public class HttpRequestWrapper
 		: IHttpRequest
 	{
 		private static readonly string physicalFilePath;
+		public Container Container { get; set; }
+		private readonly HttpRequest request;
+
 		static HttpRequestWrapper()
 		{
 			physicalFilePath = "~".MapHostAbsolutePath();
@@ -23,12 +27,28 @@ namespace ServiceStack.WebHost.Endpoints.Extensions
 			get { return request; }
 		}
 
-		private readonly HttpRequest request;
+		public object OriginalRequest
+		{
+			get { return request; }
+		}
+
+		public HttpRequestWrapper(HttpRequest request)
+			: this(null, request)
+		{
+		}
 
 		public HttpRequestWrapper(string operationName, HttpRequest request)
 		{
 			this.OperationName = operationName;
 			this.request = request;
+			this.Container = Container;
+		}
+
+		public T TryResolve<T>()
+		{
+			return Container == null 
+				? EndpointHost.AppHost.TryResolve<T>()
+				: Container.TryResolve<T>();
 		}
 
 		public string OperationName { get; set; }
@@ -38,9 +58,17 @@ namespace ServiceStack.WebHost.Endpoints.Extensions
 			get { return request.ContentType; }
 		}
 
+		private string httpMethod;
 		public string HttpMethod
 		{
-			get { return request.HttpMethod; }
+			get { return httpMethod
+				?? (httpMethod = request.Headers[Common.Web.HttpHeaders.XHttpMethodOverride] ?? request.HttpMethod);
+			}
+		}
+
+		public string UserAgent
+		{
+			get { return request.UserAgent; }
 		}
 
 		private Dictionary<string, object> items;

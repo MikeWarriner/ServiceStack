@@ -1,13 +1,12 @@
 using System;
 using System.Collections.Generic;
-using System.Dynamic;
 using System.IO;
 using System.Text;
 using NUnit.Framework;
-using RazorEngine;
 using ServiceStack.Common;
 using ServiceStack.Common.Utils;
 using ServiceStack.Markdown;
+using ServiceStack.RazorEngine;
 using ServiceStack.ServiceHost.Tests.Formats;
 
 namespace ServiceStack.ServiceHost.Tests.Formats_Razor
@@ -122,13 +121,13 @@ namespace ServiceStack.ServiceHost.Tests.Formats_Razor
 		[TestFixtureSetUp]
 		public void TestFixtureSetUp()
 		{
-			staticTemplatePath = "~/Views/Template/_Layout.cshtml".MapAbsolutePath();
+			staticTemplatePath = "~/Views/Template/_Layout.cshtml".MapProjectPath();
 			staticTemplateContent = File.ReadAllText(staticTemplatePath);
 
-			dynamicPagePath = "~/Views/Template/DynamicTpl.cshtml".MapAbsolutePath();
+			dynamicPagePath = "~/Views/Template/DynamicTpl.cshtml".MapProjectPath();
 			dynamicPageContent = File.ReadAllText(dynamicPagePath);
 
-			dynamicListPagePath = "~/Views/Template/DynamicListTpl.cshtml".MapAbsolutePath();
+			dynamicListPagePath = "~/Views/Template/DynamicListTpl.cshtml".MapProjectPath();
 			dynamicListPageContent = File.ReadAllText(dynamicListPagePath);
 
 			templateArgs = person;
@@ -795,7 +794,7 @@ Demis / Bellot
 			Razor.SetTemplateBase(typeof(CustomMarkdownViewBase<>));
 
 			razorFormat.AddTemplate(websiteTemplatePath, websiteTemplate);
-			var dynamicPage = AddViewPage("DynamicModelTpl", "/path/to/page-tpl", template, websiteTemplatePath);
+			AddViewPage("DynamicModelTpl", "/path/to/page-tpl", template, websiteTemplatePath);
 
 			var razorTemplate = razorFormat.ExecuteTemplate(
 				person, "DynamicModelTpl", websiteTemplatePath);

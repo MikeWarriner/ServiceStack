@@ -30,10 +30,10 @@ namespace ServiceStack.WebHost.Endpoints
 			return GetRequest(request, operationName);
 		}
 
-		public override object GetResponse(IHttpRequest httpReq, object request)
+		public override object GetResponse(IHttpRequest httpReq, IHttpResponse httpRes, object request)
 		{
 			var response = ExecuteService(request,
-				HandlerAttributes | GetEndpointAttributes(httpReq), httpReq);
+				HandlerAttributes | GetEndpointAttributes(httpReq), httpReq, httpRes);
 			
 			return response;
 		}
@@ -45,11 +45,6 @@ namespace ServiceStack.WebHost.Endpoints
 
 			return DeserializeContentType(operationType, httpReq, HandlerContentType);
 		}
-        
-		//public StreamSerializerDelegate GetStreamSerializer(string contentType)
-		//{
-		//    return GetContentFilters().GetStreamSerializer(contentType);
-		//}
 
 		public override void ProcessRequest(IHttpRequest httpReq, IHttpResponse httpRes, string operationName)
 		{
@@ -65,7 +60,7 @@ namespace ServiceStack.WebHost.Endpoints
 				var request = CreateRequest(httpReq, operationName);
 				if (EndpointHost.ApplyRequestFilters(httpReq, httpRes, request)) return;
 
-				var response = GetResponse(httpReq, request);
+				var response = GetResponse(httpReq, httpRes, request);
 				if (EndpointHost.ApplyResponseFilters(httpReq, httpRes, response)) return;
 
 				if (doJsonp)
@@ -75,11 +70,10 @@ namespace ServiceStack.WebHost.Endpoints
 			}
 			catch (Exception ex)
 			{
-				var errorMessage = string.Format("Error occured while Processing Request: {0}", ex.Message);
-				Log.Error(errorMessage, ex);
-
-				httpRes.WriteErrorToResponse(HandlerContentType, operationName, errorMessage, ex);
+				if (!EndpointHost.Config.WriteErrorsToResponse) throw;
+				HandleException(HandlerContentType, httpRes, operationName, ex);
 			}
 		}
+
 	}
 }

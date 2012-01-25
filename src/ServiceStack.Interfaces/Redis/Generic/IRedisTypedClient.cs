@@ -40,6 +40,7 @@ namespace ServiceStack.Redis.Generic
 		string SequenceKey { get; set; }
 		void SetSequence(int value);
 		long GetNextSequence();
+		long GetNextSequence(int incrBy);
 		RedisKeyType GetEntryType(string key);
 		string GetRandomKey();
 
@@ -70,6 +71,9 @@ namespace ServiceStack.Redis.Generic
 		T[] SearchKeys(string pattern);
 		List<T> GetValues(List<string> keys);
 		List<T> GetSortedEntryValues(IRedisSet<T> fromSet, int startingFrom, int endingAt);
+
+	    void StoreAsHash(T entity);
+	    T GetFromHash(object id);
 
 		//Set operations
 		HashSet<T> GetAllItemsFromSet(IRedisSet<T> fromSet);

@@ -3,12 +3,13 @@ using System.IO;
 using ServiceStack.Service;
 using ServiceStack.ServiceClient.Web;
 using ServiceStack.ServiceHost;
+using ServiceStack.Text;
 using ServiceStack.WebHost.Endpoints.Support.Mocks;
 using ServiceStack.WebHost.Endpoints.Tests.Mocks;
 
 namespace ServiceStack.WebHost.Endpoints.Tests.Support
 {
-	public class DirectServiceClient : IServiceClient
+	public class DirectServiceClient : IServiceClient, IRestClient
 	{
 		ServiceManager ServiceManager { get; set; }
 
@@ -25,34 +26,49 @@ namespace ServiceStack.WebHost.Endpoints.Tests.Support
 			ServiceManager.Execute(request);
 		}
 
-		private bool ApplyRequestFilters(object request)
+		public void SendOneWay(string relativeOrAbsoluteUrl, object request)
+		{
+			ServiceManager.Execute(request);
+		}
+
+		private bool ApplyRequestFilters<TResponse>(object request)
 		{
 			if (EndpointHost.ApplyRequestFilters(httpReq, httpRes, request))
 			{
-				if (httpRes.StatusCode >= 400)
-				{
-					throw new WebServiceException("WebServiceException, StatusCode: " + httpRes.StatusCode)
-					{
-						StatusCode = httpRes.StatusCode,
-					};
-				}
+				ThrowIfError<TResponse>(httpRes);
 				return true;
 			}
 			return false;
 		}
 
-		private bool ApplyResponseFilters(object response)
+		private void ThrowIfError<TResponse>(HttpResponseMock httpRes)
+		{
+			if (httpRes.StatusCode >= 400)
+			{
+				var webEx = new WebServiceException("WebServiceException, StatusCode: " + httpRes.StatusCode) {
+					StatusCode = httpRes.StatusCode,
+					StatusDescription = httpRes.StatusDescription,
+				};
+
+				try
+				{
+					var deserializer = EndpointHost.AppHost.ContentTypeFilters.GetStreamDeserializer(httpReq.ResponseContentType);
+					webEx.ResponseDto = deserializer(typeof(TResponse), httpRes.OutputStream);
+				}
+				catch (Exception ex)
+				{
+					Console.WriteLine(ex);
+				}
+
+				throw webEx;
+			}
+		}
+
+		private bool ApplyResponseFilters<TResponse>(object response)
 		{
 			if (EndpointHost.ApplyResponseFilters(httpReq, httpRes, response))
 			{
-				if (httpRes.StatusCode >= 400)
-				{
-					throw new WebServiceException("WebServiceException, StatusCode: " + httpRes.StatusCode)
-					{
-						ResponseDto = response,
-						StatusCode = httpRes.StatusCode,
-					};
-				}
+				ThrowIfError<TResponse>(httpRes);
 				return true;
 			}
 			return false;
@@ -60,13 +76,52 @@ namespace ServiceStack.WebHost.Endpoints.Tests.Support
 
 		public TResponse Send<TResponse>(object request)
 		{
-			if (ApplyRequestFilters(request)) return default(TResponse);
+			httpReq.HttpMethod = HttpMethod.Post;			
 
-			var response = ServiceManager.Execute(request);
+			if (ApplyRequestFilters<TResponse>(request)) return default(TResponse);
 
-			if (ApplyResponseFilters(response)) return (TResponse)response;
+			var response = ServiceManager.ServiceController.Execute(request,
+				new HttpRequestContext(httpReq, httpRes, request, EndpointAttributes.HttpPost));
+
+			if (ApplyResponseFilters<TResponse>(response)) return (TResponse)response;
 
 			return (TResponse)response;
+		}
+
+		public TResponse Get<TResponse>(string relativeOrAbsoluteUrl)
+		{
+			httpReq.HttpMethod = HttpMethod.Get;
+
+			var requestTypeName = typeof(TResponse).Namespace + "." + relativeOrAbsoluteUrl;
+			var requestType = typeof (TResponse).Assembly.GetType(requestTypeName);
+			if (requestType == null)
+				throw new ArgumentException("Type not found: " + requestTypeName);
+
+			var request = ReflectionExtensions.CreateInstance(requestType);
+
+			if (ApplyRequestFilters<TResponse>(request)) return default(TResponse);
+
+			var response = ServiceManager.ServiceController.Execute(request,
+				new HttpRequestContext(httpReq, httpRes, request, EndpointAttributes.HttpGet));
+
+			if (ApplyResponseFilters<TResponse>(response)) return (TResponse)response;
+
+			return (TResponse)response;
+		}
+
+		public TResponse Delete<TResponse>(string relativeOrAbsoluteUrl)
+		{
+			throw new NotImplementedException();
+		}
+
+		public TResponse Post<TResponse>(string relativeOrAbsoluteUrl, object request)
+		{
+			throw new NotImplementedException();
+		}
+
+		public TResponse Put<TResponse>(string relativeOrAbsoluteUrl, object request)
+		{
+			throw new NotImplementedException();
 		}
 
 		public TResponse PostFile<TResponse>(string relativeOrAbsoluteUrl, FileInfo fileToUpload, string mimeType)
@@ -81,7 +136,7 @@ namespace ServiceStack.WebHost.Endpoints.Tests.Support
 			{
 				try
 				{
-					if (ApplyRequestFilters(request))
+					if (ApplyRequestFilters<TResponse>(request))
 					{
 						onSuccess(default(TResponse));
 						return;
@@ -97,7 +152,7 @@ namespace ServiceStack.WebHost.Endpoints.Tests.Support
 
 				try
 				{
-					if (ApplyResponseFilters(request))
+					if (ApplyResponseFilters<TResponse>(request))
 					{
 						onSuccess(response);
 						return;

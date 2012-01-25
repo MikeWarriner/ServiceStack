@@ -2,11 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Web;
 using ServiceStack.CacheAccess.Providers;
+using ServiceStack.Common;
 using ServiceStack.Common.Web;
+using ServiceStack.MiniProfiler;
 using ServiceStack.ServiceHost;
 using ServiceStack.ServiceModel.Serialization;
 using ServiceStack.WebHost.EndPoints.Formats;
 using ServiceStack.WebHost.Endpoints.Formats;
+using ServiceStack.WebHost.EndPoints.Utils;
 
 namespace ServiceStack.WebHost.Endpoints
 {
@@ -62,6 +65,8 @@ namespace ServiceStack.WebHost.Endpoints
 		//After configure called
 		public static void AfterInit()
 		{
+			var specifiedContentType = config.DefaultContentType;
+
 			if (config.EnableFeatures != Feature.All)
 			{
 				if ((Feature.Xml & config.EnableFeatures) != Feature.Xml)
@@ -92,6 +97,11 @@ namespace ServiceStack.WebHost.Endpoints
 				MarkdownFormat.Instance.MarkdownGlobalHelpers = config.MarkdownGlobalHelpers;
 				MarkdownFormat.Instance.Register(AppHost);
 			}
+
+			if (!string.IsNullOrEmpty(specifiedContentType))
+				config.DefaultContentType = specifiedContentType;
+			else if (string.IsNullOrEmpty(config.DefaultContentType))
+				config.DefaultContentType = ContentType.Json;
 
 			config.ServiceManager.AfterInit();
 		}
@@ -143,13 +153,27 @@ namespace ServiceStack.WebHost.Endpoints
 		/// <returns></returns>
 		public static bool ApplyRequestFilters(IHttpRequest httpReq, IHttpResponse httpRes, object requestDto)
 		{
-			foreach (var requestFilter in RequestFilters)
-			{
-				requestFilter(httpReq, httpRes, requestDto);
-				if (httpRes.IsClosed) break;
-			}
+			httpReq.ThrowIfNull("httpReq");
+			httpRes.ThrowIfNull("httpRes");
 
-			return httpRes.IsClosed;
+			using (Profiler.Current.Step("Executing Request Filters"))
+			{
+				foreach (var requestFilter in RequestFilters)
+				{
+					requestFilter(httpReq, httpRes, requestDto);
+					if (httpRes.IsClosed) break;
+				}
+
+                var attributes = FilterAttributeCache.GetRequestFilterAttributes(requestDto.GetType());
+                foreach (var attribute in attributes)
+                {
+					EndpointHost.ServiceManager.Container.AutoWire(attribute);
+                    attribute.RequestFilter(httpReq, httpRes, requestDto);
+                    if (httpRes.IsClosed) break;
+                }
+
+				return httpRes.IsClosed;
+			}
 		}
 
 		/// <summary>
@@ -159,13 +183,37 @@ namespace ServiceStack.WebHost.Endpoints
 		/// <returns></returns>
 		public static bool ApplyResponseFilters(IHttpRequest httpReq, IHttpResponse httpRes, object responseDto)
 		{
-			foreach (var responseFilter in ResponseFilters)
-			{
-				responseFilter(httpReq, httpRes, responseDto);
-				if (httpRes.IsClosed) break;
-			}
+			httpReq.ThrowIfNull("httpReq");
+			httpRes.ThrowIfNull("httpRes");
 
-			return httpRes.IsClosed;
+			using (Profiler.Current.Step("Executing Response Filters"))
+			{
+				foreach (var responseFilter in ResponseFilters)
+				{
+					responseFilter(httpReq, httpRes, responseDto);
+					if (httpRes.IsClosed) break;
+				}
+
+				if (responseDto != null)
+				{
+					var httpResult = responseDto as IHttpResult;
+					if (httpResult != null)
+						responseDto = httpResult.Response;
+
+					if (responseDto != null)
+					{
+						var attributes = FilterAttributeCache.GetResponseFilterAttributes(responseDto.GetType());
+						foreach (var attribute in attributes)
+						{
+							EndpointHost.ServiceManager.Container.AutoWire(attribute);
+							attribute.ResponseFilter(httpReq, httpRes, responseDto);
+							if (httpRes.IsClosed) break;
+						}
+					}
+				}
+
+				return httpRes.IsClosed;
+			}
 		}
 
 		public static void SetOperationTypes(ServiceOperations operationTypes, ServiceOperations allOperationTypes)
@@ -174,10 +222,13 @@ namespace ServiceStack.WebHost.Endpoints
 			AllServiceOperations = allOperationTypes;
 		}
 
-		internal static object ExecuteService(object request, EndpointAttributes endpointAttributes, IHttpRequest httpReq)
+		internal static object ExecuteService(object request, EndpointAttributes endpointAttributes, IHttpRequest httpReq, IHttpResponse httpRes)
 		{
-			return config.ServiceController.Execute(request,
-				new HttpRequestContext(httpReq, request, endpointAttributes));
+            using (Profiler.Current.Step("Execute Service"))
+			{
+				return config.ServiceController.Execute(request,
+					new HttpRequestContext(httpReq, httpRes, request, endpointAttributes));
+			}
 		}
 
 	}

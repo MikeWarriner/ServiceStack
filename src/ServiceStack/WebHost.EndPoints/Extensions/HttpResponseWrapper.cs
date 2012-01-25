@@ -1,14 +1,17 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using System.Web;
 using ServiceStack.Common.Web;
 using ServiceStack.Logging;
+using ServiceStack.Net30;
 using ServiceStack.ServiceHost;
 using ServiceStack.Text;
 
 namespace ServiceStack.WebHost.Endpoints.Extensions
 {
-	internal class HttpResponseWrapper
+	public class HttpResponseWrapper
 		: IHttpResponse
 	{
 		//private static readonly ILog Log = LogManager.GetLogger(typeof(HttpResponseWrapper));
@@ -18,9 +21,15 @@ namespace ServiceStack.WebHost.Endpoints.Extensions
 		public HttpResponseWrapper(HttpResponse response)
 		{
 			this.response = response;
+			this.Cookies = new Cookies(this);
 		}
 
 		public HttpResponse Response
+		{
+			get { return response; }
+		}
+
+		public object OriginalResponse
 		{
 			get { return response; }
 		}
@@ -30,16 +39,18 @@ namespace ServiceStack.WebHost.Endpoints.Extensions
 			set { this.response.StatusCode = value; }
 		}
 
-        public string StatusDescription
-        {
-            set { this.response.StatusDescription = value; }
-        }
+		public string StatusDescription
+		{
+			set { this.response.StatusDescription = value; }
+		}
 
 		public string ContentType
 		{
 			get { return response.ContentType; }
 			set { response.ContentType = value; }
 		}
+
+		public ICookies Cookies { get; set; }
 
 		public void AddHeader(string name, string value)
 		{
@@ -65,6 +76,22 @@ namespace ServiceStack.WebHost.Endpoints.Extensions
 		{
 			this.IsClosed = true;
 			response.CloseOutputStream();
+		}
+
+		public void End()
+		{
+			this.IsClosed = true;
+			try
+			{
+				response.ClearContent();
+				response.End();
+			}
+			catch {}
+		}
+
+		public void Flush()
+		{
+			response.Flush();
 		}
 
 		public bool IsClosed

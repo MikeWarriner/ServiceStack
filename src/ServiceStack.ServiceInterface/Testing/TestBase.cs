@@ -111,9 +111,28 @@ namespace ServiceStack.ServiceInterface.Testing
 				ServiceManager.Execute(request);
 			}
 
-			public TResponse Send<TResponse>(object request)
+		    public void SendOneWay(string relativeOrAbsoluteUrl, object request)
+		    {
+                ServiceManager.Execute(request);
+            }
+
+		    public TResponse Send<TResponse>(object request)
 			{
 				var response = ServiceManager.Execute(request);
+				var httpResult = response as HttpResult;
+				if (httpResult != null)
+				{
+					if (httpResult.StatusCode >= HttpStatusCode.BadRequest)
+					{
+						var webEx = new WebServiceException(httpResult.StatusDescription) {
+							ResponseDto = httpResult.Response,
+							StatusCode = (int)httpResult.StatusCode,
+						};
+						throw webEx;
+					}
+					return (TResponse) httpResult.Response;
+				}
+
 				return (TResponse)response;
 			}
 
@@ -313,7 +332,7 @@ namespace ServiceStack.ServiceInterface.Testing
 				);
 
 			var request = httpHandler.CreateRequest(httpReq, httpHandler.RequestName);
-			var response = httpHandler.GetResponse(httpReq, request);
+			var response = httpHandler.GetResponse(httpReq, null, request);
 
 			var httpRes = response as IHttpResult;
 			if (httpRes != null)

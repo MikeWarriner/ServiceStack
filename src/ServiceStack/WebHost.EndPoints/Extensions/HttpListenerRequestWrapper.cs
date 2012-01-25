@@ -41,6 +41,7 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using System.Web;
+using Funq;
 using ServiceStack.Common.Utils;
 using ServiceStack.ServiceHost;
 using ServiceStack.Text;
@@ -51,17 +52,39 @@ namespace ServiceStack.WebHost.Endpoints.Extensions
 		: IHttpRequest
 	{
 		private static readonly string physicalFilePath;
+		private readonly HttpListenerRequest request;
+		public Container Container { get; set; }
+
 		static HttpListenerRequestWrapper()
 		{
 			physicalFilePath = "~".MapAbsolutePath();
 		}
+		
+		public HttpListenerRequest Request
+		{
+			get { return request; }
+		}
 
-		private readonly HttpListenerRequest request;
+		public object OriginalRequest
+		{
+			get { return request; }
+		}
 
-		public HttpListenerRequestWrapper(string operationName, HttpListenerRequest request)
+		public HttpListenerRequestWrapper(HttpListenerRequest request)
+			: this(null, request) {}
+
+		public HttpListenerRequestWrapper(
+			string operationName, HttpListenerRequest request)
 		{
 			this.OperationName = operationName;
 			this.request = request;
+		}
+
+		public T TryResolve<T>()
+		{
+			return Container == null 
+				? EndpointHost.AppHost.TryResolve<T>()
+				: Container.TryResolve<T>();
 		}
 
 		public string OperationName { get; set; }
@@ -157,6 +180,11 @@ namespace ServiceStack.WebHost.Endpoints.Extensions
 			}
 		}
 
+		public string UserAgent
+		{
+			get { return request.UserAgent; }
+		}
+
 		public NameValueCollection Headers
 		{
 			get { return request.Headers; }
@@ -172,9 +200,14 @@ namespace ServiceStack.WebHost.Endpoints.Extensions
 			get { return this.Form; }
 		}
 
+		private string httpMethod;
 		public string HttpMethod
 		{
-			get { return request.HttpMethod; }
+			get
+			{
+				return httpMethod
+					?? (httpMethod = request.Headers[Common.Web.HttpHeaders.XHttpMethodOverride] ?? request.HttpMethod);
+			}
 		}
 
 		public string ContentType

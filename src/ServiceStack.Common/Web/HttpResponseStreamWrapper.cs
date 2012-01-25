@@ -17,9 +17,17 @@ namespace ServiceStack.Common.Web
 		}
 
 		public Dictionary<string, string> Headers { get; set; }
+
+		public object OriginalResponse
+		{
+			get { return null; }
+		}
+
 		public int StatusCode { set; private get; }
         public string StatusDescription { set; private get; }
 		public string ContentType { get; set; }
+
+		public ICookies Cookies { get; set; }
 
 		public void AddHeader(string name, string value)
 		{
@@ -44,6 +52,16 @@ namespace ServiceStack.Common.Web
 			if (IsClosed) return;
 			OutputStream.Close();
 			IsClosed = true;
+		}
+
+		public void End()
+		{
+			Close();
+		}
+
+		public void Flush()
+		{
+			OutputStream.Flush();
 		}
 
 		public bool IsClosed { get; private set; }

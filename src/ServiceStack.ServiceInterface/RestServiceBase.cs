@@ -1,8 +1,14 @@
 using System;
+using ServiceStack.Common.Web;
 using ServiceStack.ServiceHost;
 
 namespace ServiceStack.ServiceInterface
 {
+	/// <summary>
+	///		Base class for services that support HTTP verbs.
+	/// </summary>
+	/// <typeparam name="TRequest">The request class that the descendent class
+	///	is responsible for processing.</typeparam>
 	public abstract class RestServiceBase<TRequest>
 		: ServiceBase<TRequest>,
 		IRestGetService<TRequest>,
@@ -11,11 +17,30 @@ namespace ServiceStack.ServiceInterface
 		IRestDeleteService<TRequest>,
 		IRestPatchService<TRequest>
 	{
+
+		/// <summary>
+		/// What gets run when the request is sent to AsyncOneWay endpoint.
+		/// For a REST service the OnPost() method is called.
+		/// </summary>
 		protected override object Run(TRequest request)
 		{
-			throw new NotImplementedException("This base method should be overridden but not called");
+			return OnPost(request);
 		}
 
+		/// <summary>
+		///		The method may overriden by the descendent class to provide support for the 
+		///		GET verb on <see cref="TRequest"/> objects.
+		/// </summary>
+		/// <param name="request">The request object containing parameters for the GET
+		///		operation.</param>
+		/// <returns>
+		///		A response object that the client expects, <see langword="null"/> if a response
+		///		object is not applicable, or an <see cref="HttpResult"/> object, to indicate an 
+		///		error condition to the client. The <see cref="HttpResult"/> object allows the 
+		///		implementation to control the exact HTTP status code returned to the client.  
+		///		Any return value other than <see cref="HttpResult"/> causes the HTTP status code 
+		///		of 200 to be returned to the client.
+		/// </returns>
 		public virtual object OnGet(TRequest request)
 		{
 			throw new NotImplementedException("This base method should be overridden but not called");
@@ -25,15 +50,34 @@ namespace ServiceStack.ServiceInterface
 		{
 			try
 			{
+				OnEachRequest(request);
 				OnBeforeExecute(request);
-				return OnGet(request);
+				return OnAfterExecute(OnGet(request));
 			}
 			catch (Exception ex)
 			{
-				return HandleException(request, ex);
+				var result = HandleException(request, ex);
+
+				if (result == null) throw;
+
+				return result;
 			}
 		}
 
+		/// <summary>
+		///		The method may overriden by the descendent class to provide support for the 
+		///		PUT verb on <see cref="TRequest"/> objects.
+		/// </summary>
+		/// <param name="request">The request object containing parameters for the PUT
+		///		operation.</param>
+		/// <returns>
+		///		A response object that the client expects, <see langword="null"/> if a response
+		///		object is not applicable, or an <see cref="HttpResult"/> object, to indicate an 
+		///		error condition to the client. The <see cref="HttpResult"/> object allows the 
+		///		implementation to control the exact HTTP status code returned to the client.  
+		///		Any return value other than <see cref="HttpResult"/> causes the HTTP status code 
+		///		of 200 to be returned to the client.
+		/// </returns>
 		public virtual object OnPut(TRequest request)
 		{
 			throw new NotImplementedException("This base method should be overridden but not called");
@@ -43,15 +87,34 @@ namespace ServiceStack.ServiceInterface
 		{
 			try
 			{
+				OnEachRequest(request);
 				OnBeforeExecute(request);
-				return OnPut(request);
+				return OnAfterExecute(OnPut(request));
 			}
 			catch (Exception ex)
 			{
-				return HandleException(request, ex);
+				var result = HandleException(request, ex);
+
+				if (result == null) throw;
+
+				return result;
 			}
 		}
 
+		/// <summary>
+		///		The method may overriden by the descendent class to provide support for the 
+		///		POST verb on <see cref="TRequest"/> objects.
+		/// </summary>
+		/// <param name="request">The request object containing parameters for the POST
+		///		operation.</param>
+		/// <returns>
+		///		A response object that the client expects, <see langword="null"/> if a response
+		///		object is not applicable, or an <see cref="HttpResult"/> object, to indicate an 
+		///		error condition to the client. The <see cref="HttpResult"/> object allows the 
+		///		implementation to control the exact HTTP status code returned to the client.  
+		///		Any return value other than <see cref="HttpResult"/> causes the HTTP status code 
+		///		of 200 to be returned to the client.
+		/// </returns>
 		public virtual object OnPost(TRequest request)
 		{
 			throw new NotImplementedException("This base method should be overridden but not called");
@@ -61,15 +124,34 @@ namespace ServiceStack.ServiceInterface
 		{
 			try
 			{
+				OnEachRequest(request);
 				OnBeforeExecute(request);
-				return OnPost(request);
+				return OnAfterExecute(OnPost(request));
 			}
 			catch (Exception ex)
 			{
-				return HandleException(request, ex);
+				var result = HandleException(request, ex);
+
+				if (result == null) throw;
+
+				return result;
 			}
 		}
 
+		/// <summary>
+		///		The method may overriden by the descendent class to provide support for the 
+		///		DELETE verb on <see cref="TRequest"/> objects.
+		/// </summary>
+		/// <param name="request">The request object containing parameters for the DELETE
+		///		operation.</param>
+		/// <returns>
+		///		A response object that the client expects, <see langword="null"/> if a response
+		///		object is not applicable, or an <see cref="HttpResult"/> object, to indicate an 
+		///		error condition to the client. The <see cref="HttpResult"/> object allows the 
+		///		implementation to control the exact HTTP status code returned to the client.  
+		///		Any return value other than <see cref="HttpResult"/> causes the HTTP status code 
+		///		of 200 to be returned to the client.
+		/// </returns>
 		public virtual object OnDelete(TRequest request)
 		{
 			throw new NotImplementedException("This base method should be overridden but not called");
@@ -79,15 +161,34 @@ namespace ServiceStack.ServiceInterface
 		{
 			try
 			{
+				OnEachRequest(request);
 				OnBeforeExecute(request);
-				return OnDelete(request);
+				return OnAfterExecute(OnDelete(request));
 			}
 			catch (Exception ex)
 			{
-				return HandleException(request, ex);
+				var result = HandleException(request, ex);
+
+				if (result == null) throw;
+
+				return result;
 			}
 		}
 
+		/// <summary>
+		///		The method may overriden by the descendent class to provide support for the 
+		///		PATCH verb on <see cref="TRequest"/> objects.
+		/// </summary>
+		/// <param name="request">The request object containing parameters for the PATCH
+		///		operation.</param>
+		/// <returns>
+		///		A response object that the client expects, <see langword="null"/> if a response
+		///		object is not applicable, or an <see cref="HttpResult"/> object, to indicate an 
+		///		error condition to the client. The <see cref="HttpResult"/> object allows the 
+		///		implementation to control the exact HTTP status code returned to the client.  
+		///		Any return value other than <see cref="HttpResult"/> causes the HTTP status code 
+		///		of 200 to be returned to the client.
+		/// </returns>
 		public virtual object OnPatch(TRequest request)
 		{
 			throw new NotImplementedException("This base method should be overridden but not called");
@@ -97,12 +198,17 @@ namespace ServiceStack.ServiceInterface
 		{
 			try
 			{
+				OnEachRequest(request);
 				OnBeforeExecute(request);
-				return OnPatch(request);
+				return OnAfterExecute(OnPatch(request));
 			}
 			catch (Exception ex)
 			{
-				return HandleException(request, ex);
+				var result = HandleException(request, ex);
+
+				if (result == null) throw;
+
+				return result;
 			}
 		}
 	}

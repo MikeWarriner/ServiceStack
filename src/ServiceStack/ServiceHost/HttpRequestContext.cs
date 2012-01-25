@@ -11,6 +11,7 @@ namespace ServiceStack.ServiceHost
 		: IRequestContext
 	{
 		private readonly IHttpRequest httpReq;
+		private readonly IHttpResponse httpRes;
 
 		public HttpRequestContext(object dto)
 			: this(dto, null)
@@ -22,15 +23,16 @@ namespace ServiceStack.ServiceHost
 		{
 		}
 
-		public HttpRequestContext(IHttpRequest httpReq, object dto)
-			: this(httpReq, dto, EndpointAttributes.None)
+		public HttpRequestContext(IHttpRequest httpReq, IHttpResponse httpRes, object dto)
+			: this(httpReq, httpRes, dto, EndpointAttributes.None)
 		{
 		}
 
-		public HttpRequestContext(IHttpRequest httpReq, object dto, EndpointAttributes endpointAttributes)
+		public HttpRequestContext(IHttpRequest httpReq, IHttpResponse httpRes, object dto, EndpointAttributes endpointAttributes)
 			: this(dto, endpointAttributes, null)
 		{
 			this.httpReq = httpReq;
+			this.httpRes = httpRes;
 			if (this.httpReq != null)
 			{
 				this.Files = httpReq.Files;
@@ -59,7 +61,7 @@ namespace ServiceStack.ServiceHost
 
 		public object Dto { get; set; }
 
-		public IDictionary<string, Cookie> Cookies
+		public IDictionary<string, System.Net.Cookie> Cookies
 		{
 			get { return this.httpReq.Cookies; }
 		}
@@ -73,15 +75,19 @@ namespace ServiceStack.ServiceHost
 			get { return this.httpReq.ContentType; }
 		}
 
+	    private string responseContentType;
 		public string ResponseContentType
 		{
-			get { return this.httpReq.ResponseContentType; }
+            get { return responseContentType ?? this.httpReq.ResponseContentType; }
+            set { responseContentType = value; }
 		}
 
 		public T Get<T>() where T : class
 		{
 			if (typeof(T) == typeof(IHttpRequest))
-				return (T) this.httpReq;
+				return (T)this.httpReq;
+			if (typeof(T) == typeof(IHttpResponse))
+				return (T)this.httpRes;
 
 			var isDto = this.Dto as T;
 			return isDto ?? (this.Factory != null ? this.Factory.Resolve<T>() : null);

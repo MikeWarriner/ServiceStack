@@ -7,7 +7,7 @@ using ServiceStack.ServiceHost;
 
 namespace ServiceStack.WebHost.Endpoints.Extensions
 {
-	internal class HttpListenerResponseWrapper 
+	public class HttpListenerResponseWrapper 
 		: IHttpResponse
 	{
 		private static readonly ILog Log = LogManager.GetLogger(typeof (HttpListenerResponseWrapper));
@@ -17,6 +17,12 @@ namespace ServiceStack.WebHost.Endpoints.Extensions
 		public HttpListenerResponseWrapper(HttpListenerResponse response)
 		{
 			this.response = response;
+			this.Cookies = new Cookies(this);
+		}
+
+		public object OriginalResponse
+		{
+			get { return response; }
 		}
 
 		public int StatusCode
@@ -26,7 +32,10 @@ namespace ServiceStack.WebHost.Endpoints.Extensions
 
         public string StatusDescription
         {
-            set { this.response.StatusDescription = value; }
+            set
+            {
+				this.response.StatusDescription = value;
+			}
         }
 
 		public string ContentType
@@ -34,6 +43,8 @@ namespace ServiceStack.WebHost.Endpoints.Extensions
 			get { return response.ContentType; }
 			set { response.ContentType = value; }
 		}
+
+		public ICookies Cookies { get; set; }
 
 		public void AddHeader(string name, string value)
 		{
@@ -73,8 +84,26 @@ namespace ServiceStack.WebHost.Endpoints.Extensions
             if (!this.IsClosed)
             {
                 this.IsClosed = true;
-                this.response.CloseOutputStream();
-            }
+
+				try
+				{
+					this.response.CloseOutputStream();
+				}
+				catch (Exception ex)
+				{
+					Log.Error("Error closing HttpListener output stream", ex);
+				}
+			}
+		}
+
+		public void End()
+		{
+			Close();
+		}
+
+		public void Flush()
+		{
+			response.OutputStream.Flush();
 		}
 
 		public bool IsClosed

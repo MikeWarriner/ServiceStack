@@ -59,6 +59,10 @@ namespace ServiceStack.Redis
 		void RenameKey(string fromName, string toName);
 		string GetSubstring(string key, int fromIndex, int toIndex);
 
+        //store POCOs as hash
+	    T GetFromHash<T>(object id);
+	    void StoreAsHash<T>(T entity);
+
 		bool ContainsKey(string key);
 		bool RemoveEntry(params string[] args);
 		long IncrementValue(string key);
@@ -161,11 +165,13 @@ namespace ServiceStack.Redis
 		bool AddItemToSortedSet(string setId, string value);
 		bool AddItemToSortedSet(string setId, string value, double score);
 		bool AddRangeToSortedSet(string setId, List<string> values, double score);
+		bool AddRangeToSortedSet(string setId, List<string> values, long score);
 		bool RemoveItemFromSortedSet(string setId, string value);
 		string PopItemWithLowestScoreFromSortedSet(string setId);
 		string PopItemWithHighestScoreFromSortedSet(string setId);
 		bool SortedSetContainsItem(string setId, string value);
 		double IncrementItemInSortedSet(string setId, string value, double incrementBy);
+		double IncrementItemInSortedSet(string setId, string value, long incrementBy);
 		int GetItemIndexInSortedSet(string setId, string value);
 		int GetItemIndexInSortedSetDesc(string setId, string value);
 		List<string> GetAllItemsFromSortedSet(string setId);
@@ -178,21 +184,30 @@ namespace ServiceStack.Redis
 		List<string> GetRangeFromSortedSetByLowestScore(string setId, string fromStringScore, string toStringScore);
 		List<string> GetRangeFromSortedSetByLowestScore(string setId, string fromStringScore, string toStringScore, int? skip, int? take);
 		List<string> GetRangeFromSortedSetByLowestScore(string setId, double fromScore, double toScore);
+		List<string> GetRangeFromSortedSetByLowestScore(string setId, long fromScore, long toScore);
 		List<string> GetRangeFromSortedSetByLowestScore(string setId, double fromScore, double toScore, int? skip, int? take);
+		List<string> GetRangeFromSortedSetByLowestScore(string setId, long fromScore, long toScore, int? skip, int? take);
 		IDictionary<string, double> GetRangeWithScoresFromSortedSetByLowestScore(string setId, string fromStringScore, string toStringScore);
 		IDictionary<string, double> GetRangeWithScoresFromSortedSetByLowestScore(string setId, string fromStringScore, string toStringScore, int? skip, int? take);
 		IDictionary<string, double> GetRangeWithScoresFromSortedSetByLowestScore(string setId, double fromScore, double toScore);
+		IDictionary<string, double> GetRangeWithScoresFromSortedSetByLowestScore(string setId, long fromScore, long toScore);
 		IDictionary<string, double> GetRangeWithScoresFromSortedSetByLowestScore(string setId, double fromScore, double toScore, int? skip, int? take);
+		IDictionary<string, double> GetRangeWithScoresFromSortedSetByLowestScore(string setId, long fromScore, long toScore, int? skip, int? take);
 		List<string> GetRangeFromSortedSetByHighestScore(string setId, string fromStringScore, string toStringScore);
 		List<string> GetRangeFromSortedSetByHighestScore(string setId, string fromStringScore, string toStringScore, int? skip, int? take);
 		List<string> GetRangeFromSortedSetByHighestScore(string setId, double fromScore, double toScore);
+		List<string> GetRangeFromSortedSetByHighestScore(string setId, long fromScore, long toScore);
 		List<string> GetRangeFromSortedSetByHighestScore(string setId, double fromScore, double toScore, int? skip, int? take);
+		List<string> GetRangeFromSortedSetByHighestScore(string setId, long fromScore, long toScore, int? skip, int? take);
 		IDictionary<string, double> GetRangeWithScoresFromSortedSetByHighestScore(string setId, string fromStringScore, string toStringScore);
 		IDictionary<string, double> GetRangeWithScoresFromSortedSetByHighestScore(string setId, string fromStringScore, string toStringScore, int? skip, int? take);
 		IDictionary<string, double> GetRangeWithScoresFromSortedSetByHighestScore(string setId, double fromScore, double toScore);
+		IDictionary<string, double> GetRangeWithScoresFromSortedSetByHighestScore(string setId, long fromScore, long toScore);
 		IDictionary<string, double> GetRangeWithScoresFromSortedSetByHighestScore(string setId, double fromScore, double toScore, int? skip, int? take);
+		IDictionary<string, double> GetRangeWithScoresFromSortedSetByHighestScore(string setId, long fromScore, long toScore, int? skip, int? take);
 		int RemoveRangeFromSortedSet(string setId, int minRank, int maxRank);
 		int RemoveRangeFromSortedSetByScore(string setId, double fromScore, double toScore);
+		int RemoveRangeFromSortedSetByScore(string setId, long fromScore, long toScore);
 		int GetSortedSetCount(string setId);
 		double GetItemScoreInSortedSet(string setId, string value);
 		int StoreIntersectFromSortedSets(string intoSetId, params string[] setIds);

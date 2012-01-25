@@ -9,7 +9,9 @@ using ServiceStack.Common.Web;
 using ServiceStack.ServiceClient.Web;
 using ServiceStack.ServiceHost;
 using ServiceStack.ServiceModel.Serialization;
+using ServiceStack.Text;
 using ServiceStack.WebHost.Endpoints.Extensions;
+using ServiceStack.WebHost.EndPoints.Utils;
 
 namespace ServiceStack.WebHost.Endpoints.Support
 {
@@ -34,6 +36,16 @@ namespace ServiceStack.WebHost.Endpoints.Support
 			return ExecuteMessage(requestMsg, endpointAttributes);
 		}
 
+        public Message EmptyResponse(Message requestMsg, Type requestType)
+        {
+            var responseType = AssemblyUtils.FindType(requestType.FullName + "Response");
+            var response = ReflectionExtensions.CreateInstance(responseType ?? typeof(object));
+
+            return requestMsg.Headers.Action == null
+                ? Message.CreateMessage(requestMsg.Version, null, response)
+                : Message.CreateMessage(requestMsg.Version, requestType.Name + "Response", response);
+        }
+
 		protected Message ExecuteMessage(Message requestMsg, EndpointAttributes endpointAttributes)
 		{
 			if ((EndpointAttributes.Soap11 & this.HandlerAttributes) == EndpointAttributes.Soap11)
@@ -54,23 +66,37 @@ namespace ServiceStack.WebHost.Endpoints.Support
 
 				IHttpRequest httpReq = null;
 				IHttpResponse httpRes = null;
-				var hasRequestFilters = EndpointHost.RequestFilters.Count > 0;
-				var hasResponseFilters = EndpointHost.ResponseFilters.Count > 0;
-				if (hasRequestFilters || hasResponseFilters)
+				
+				var hasRequestFilters = EndpointHost.RequestFilters.Count > 0 
+                    || FilterAttributeCache.GetRequestFilterAttributes(request.GetType()).Any();
+				
+				if (hasRequestFilters)
 				{
 					httpReq = HttpContext.Current != null
 						? new HttpRequestWrapper(requestType.Name, HttpContext.Current.Request)
 						: null;
 					httpRes = HttpContext.Current != null
-						? new HttpResponseWrapper(HttpContext.Current.Response)
-						: null;
+							? new HttpResponseWrapper(HttpContext.Current.Response)
+							: null;
 				}
 
-				if (EndpointHost.ApplyRequestFilters(httpReq, httpRes, request)) return null;
+				if (hasRequestFilters && EndpointHost.ApplyRequestFilters(httpReq, httpRes, request)) 
+                    return EmptyResponse(requestMsg, requestType);
 
-				var response = ExecuteService(request, endpointAttributes, null);
+				var response = ExecuteService(request, endpointAttributes, httpReq, httpRes);
 
-				if (EndpointHost.ApplyResponseFilters(httpReq, httpRes, response)) return null;
+				var hasResponseFilters = EndpointHost.ResponseFilters.Count > 0
+				   || FilterAttributeCache.GetResponseFilterAttributes(response.GetType()).Any();
+				
+				if (hasResponseFilters && httpRes == null)
+				{
+					httpRes = HttpContext.Current != null
+							? new HttpResponseWrapper(HttpContext.Current.Response)
+							: null;					
+				}
+
+				if (hasResponseFilters && EndpointHost.ApplyResponseFilters(httpReq, httpRes, response))
+                    return EmptyResponse(requestMsg, requestType);
 
 				return requestMsg.Headers.Action == null
 					? Message.CreateMessage(requestMsg.Version, null, response)
@@ -186,7 +212,7 @@ namespace ServiceStack.WebHost.Endpoints.Support
 			throw new NotImplementedException();
 		}
 
-		public override object GetResponse(IHttpRequest httpReq, object request)
+		public override object GetResponse(IHttpRequest httpReq, IHttpResponse httpRes, object request)
 		{
 			throw new NotImplementedException();
 		}

@@ -34,6 +34,17 @@ namespace ServiceStack.ServiceInterface.Testing
 			this.CatchAllHandlers = new List<HttpHandlerResolverDelegate>();
 		}
 
+		public void RegisterAs<T, TAs>() where T : TAs
+		{
+			var autoWire = new AutoWireContainer(container);
+			autoWire.RegisterAs<T, TAs>();
+		}
+		
+		public void Register<T>(T instance)
+		{
+			container.Register(instance);
+		}
+
 		public T TryResolve<T>()
 		{
 			return container.TryResolve<T>();
@@ -50,5 +61,10 @@ namespace ServiceStack.ServiceInterface.Testing
 		public List<HttpHandlerResolverDelegate> CatchAllHandlers { get; private set; }
 
 		public EndpointHostConfig Config { get; set; }
+
+		public void RegisterService(Type serviceType, params string[] atRestPaths)
+		{
+			Config.ServiceManager.RegisterService(serviceType);
+		}
 	}
 }

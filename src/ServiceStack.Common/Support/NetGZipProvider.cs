@@ -3,6 +3,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Text;
 using ServiceStack.CacheAccess;
+using ServiceStack.Text;
 
 namespace ServiceStack.Common.Support
 {
@@ -11,40 +12,23 @@ namespace ServiceStack.Common.Support
 		public byte[] GZip(string text)
 		{
 			var buffer = Encoding.UTF8.GetBytes(text);
-			var ms = new MemoryStream();
-			using (var zipStream = new GZipStream(ms, CompressionMode.Compress, true))
+			using (var ms = new MemoryStream())
+			using (var zipStream = new GZipStream(ms, CompressionMode.Compress))
 			{
 				zipStream.Write(buffer, 0, buffer.Length);
+				zipStream.Close();
+
+				return ms.ToArray();
 			}
-
-			ms.Position = 0;
-
-			var compressed = new byte[ms.Length];
-			ms.Read(compressed, 0, compressed.Length);
-
-			var gzBuffer = new byte[compressed.Length + 4];
-			Buffer.BlockCopy(compressed, 0, gzBuffer, 4, compressed.Length);
-			Buffer.BlockCopy(BitConverter.GetBytes(buffer.Length), 0, gzBuffer, 0, 4);
-
-			return gzBuffer;
 		}
-
+		
 		public string GUnzip(byte[] gzBuffer)
 		{
-			using (var ms = new MemoryStream())
+			using (var compressedStream = new MemoryStream(gzBuffer))
+			using (var zipStream = new GZipStream(compressedStream, CompressionMode.Decompress))
 			{
-				var msgLength = BitConverter.ToInt32(gzBuffer, 0);
-				ms.Write(gzBuffer, 4, gzBuffer.Length - 4);
-
-				var buffer = new byte[msgLength];
-
-				ms.Position = 0;
-				using (var zipStream = new GZipStream(ms, CompressionMode.Decompress))
-				{
-					zipStream.Read(buffer, 0, buffer.Length);
-				}
-
-				return Encoding.UTF8.GetString(buffer);
+				var utf8Bytes = zipStream.ReadFully();
+				return Encoding.UTF8.GetString(utf8Bytes);
 			}
 		}
 	}

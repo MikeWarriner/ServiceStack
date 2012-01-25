@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Net;
+using ServiceStack.Common.Utils;
 using ServiceStack.ServiceHost;
+using ServiceStack.ServiceInterface.ServiceModel;
 
 namespace ServiceStack.Common.Web
 {
@@ -15,13 +17,19 @@ namespace ServiceStack.Common.Web
 		public HttpError(HttpStatusCode statusCode, string errorCode)
 			: this(statusCode, errorCode, null) {}
 
+        public HttpError(object responseDto, HttpStatusCode statusCode, string errorCode, string errorMessage)
+            : this(statusCode, errorCode, errorMessage)
+        {
+            this.Response = responseDto;
+        }
+
 		public HttpError(HttpStatusCode statusCode, string errorCode, string errorMessage)
 			: base(errorMessage ?? errorCode)
 		{
 			this.ErrorCode = errorCode;
 			this.StatusCode = statusCode;
 			this.Headers = new Dictionary<string, string>();
-            this.StatusDescription = errorMessage ?? errorCode;
+            this.StatusDescription = errorCode;
 		}
 
 		public HttpError(HttpStatusCode statusCode, Exception innerException)
@@ -61,5 +69,48 @@ namespace ServiceStack.Common.Web
 		{
 			get { return this.Headers; }
 		}
-	}
+
+		public ResponseStatus ResponseStatus
+		{
+			get
+			{
+				if (this.Response == null)
+					return null;
+
+				var hasResponseStatus = this.Response as IHasResponseStatus;
+				if (hasResponseStatus != null)
+					return hasResponseStatus.ResponseStatus;
+
+				var propertyInfo = this.Response.GetType().GetProperty("ResponseStatus");				
+				if (propertyInfo == null)
+					return null;
+
+				return ReflectionUtils.GetProperty(this.Response, propertyInfo) as ResponseStatus;
+			}
+		}
+
+		public List<ResponseError> GetFieldErrors()
+		{
+			var responseStatus = ResponseStatus;
+			if (responseStatus != null)
+				return responseStatus.Errors ?? new List<ResponseError>();
+			
+			return new List<ResponseError>();
+		}
+
+		public static Exception NotFound(string message)
+		{
+			return new HttpError(HttpStatusCode.NotFound, message);
+		}
+
+        public static Exception Unauthorized(string message)
+        {
+            return new HttpError(HttpStatusCode.Unauthorized, message);
+        }
+
+        public static Exception Conflict(string message)
+        {
+            return new HttpError(HttpStatusCode.Conflict, message);
+        }
+    }
 }

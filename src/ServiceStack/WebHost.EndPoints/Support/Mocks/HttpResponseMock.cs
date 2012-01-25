@@ -15,6 +15,12 @@ namespace ServiceStack.WebHost.Endpoints.Tests.Mocks
 			this.Headers = new NameValueCollection();
 			this.OutputStream = new MemoryStream();
 			this.TextWritten = new StringBuilder();
+			this.Cookies = new Cookies(this);
+		}
+
+		public object OriginalResponse
+		{
+			get { return null; }
 		}
 
 		public string GetOutputStreamAsString()
@@ -65,6 +71,8 @@ namespace ServiceStack.WebHost.Endpoints.Tests.Mocks
 			private set;
 		}
 
+		public ICookies Cookies { get; set; }
+
 		public void AddHeader(string name, string value)
 		{
 			this.Headers.Add(name, value);
@@ -89,6 +97,17 @@ namespace ServiceStack.WebHost.Endpoints.Tests.Mocks
 		public void Close()
 		{
 			this.IsClosed = true;
+			OutputStream.Position = 0;
+		}
+
+		public void End()
+		{
+			Close();
+		}
+
+		public void Flush()
+		{
+			OutputStream.Flush();
 		}
 
 		public bool IsClosed

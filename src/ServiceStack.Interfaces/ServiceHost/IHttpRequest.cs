@@ -6,16 +6,35 @@ using System.Net;
 
 namespace ServiceStack.ServiceHost
 {
-	public interface IHttpRequest
+	/// <summary>
+	/// A thin wrapper around ASP.NET or HttpListener's HttpRequest
+	/// </summary>
+	public interface IHttpRequest : IResolver
 	{
+		/// <summary>
+		/// The underlying ASP.NET or HttpListener HttpRequest
+		/// </summary>
+		object OriginalRequest { get; }
+
+		/// <summary>
+		/// The name of the service being called (e.g. Request DTO Name)
+		/// </summary>
 		string OperationName { get; }
 
+		/// <summary>
+		/// The request ContentType
+		/// </summary>
 		string ContentType { get; }
 
 		string HttpMethod { get; }
 
-		IDictionary<string, Cookie> Cookies { get; }
+		string UserAgent { get; }
 
+		IDictionary<string, System.Net.Cookie> Cookies { get; }
+
+		/// <summary>
+		/// The expected Response ContentType for this request
+		/// </summary>
 		string ResponseContentType { get; set; }
 
 		/// <summary>
@@ -29,6 +48,10 @@ namespace ServiceStack.ServiceHost
 
 		NameValueCollection FormData { get; }
 
+		/// <summary>
+		/// The entire string contents of Request.InputStream
+		/// </summary>
+		/// <returns></returns>
 		string GetRawBody();
 
 		string RawUrl { get; }
@@ -37,6 +60,9 @@ namespace ServiceStack.ServiceHost
 
 		string UserHostAddress { get; }
 
+		/// <summary>
+		/// e.g. is https or not
+		/// </summary>
 		bool IsSecureConnection { get; }
 
 		string[] AcceptTypes { get; }
@@ -47,6 +73,9 @@ namespace ServiceStack.ServiceHost
 
 		long ContentLength { get; }
 
+		/// <summary>
+		/// Access to the multi-part/formdata files posted on this request
+		/// </summary>
 		IFile[] Files { get; }
 
 		string ApplicationFilePath { get; }

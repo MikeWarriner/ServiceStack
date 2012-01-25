@@ -10,7 +10,6 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>ServiceStack.ServiceHost.Tests</RootNamespace>
     <AssemblyName>ServiceStack.ServiceHost.Tests</AssemblyName>
-    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <FileUpgradeFlags>
     </FileUpgradeFlags>
@@ -31,7 +30,6 @@
     <IsWebBootstrapper>false</IsWebBootstrapper>
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
-    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -77,14 +75,6 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Microsoft.CSharp" />
-    <Reference Include="ServiceStack.OrmLite, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\lib\tests\ServiceStack.OrmLite.dll</HintPath>
-    </Reference>
-    <Reference Include="ServiceStack.OrmLite.Sqlite, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\lib\tests\ServiceStack.OrmLite.Sqlite.dll</HintPath>
-    </Reference>
     <Reference Include="ServiceStack.Text">
       <HintPath>..\..\lib\ServiceStack.Text.dll</HintPath>
     </Reference>
@@ -104,8 +94,13 @@
     </Reference>
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
-    <Reference Include="nunit.framework, Version=2.4.8.0, Culture=neutral, PublicKeyToken=96d09a1eb7f44a77">
-      <SpecificVersion>False</SpecificVersion>
+    <Reference Include="ServiceStack.OrmLite">
+      <HintPath>..\..\lib\tests\ServiceStack.OrmLite.dll</HintPath>
+    </Reference>
+    <Reference Include="ServiceStack.OrmLite.Sqlite">
+      <HintPath>..\..\lib\tests\ServiceStack.OrmLite.Sqlite.dll</HintPath>
+    </Reference>
+    <Reference Include="nunit.framework">
       <HintPath>..\..\lib\tests\nunit.framework.dll</HintPath>
     </Reference>
   </ItemGroup>
@@ -137,10 +132,15 @@
     <Compile Include="Formats\TextBlockUtils.cs" />
     <Compile Include="Formats\UseCaseTests.cs" />
     <Compile Include="Formats\ViewTests.cs" />
+    <Compile Include="IoCTests.cs" />
     <Compile Include="PerfTests.cs" />
+    <Compile Include="RequestContextExtensionsTest.cs" />
     <Compile Include="RestPathTests.cs" />
+    <Compile Include="Routes\SimpleRestServices.cs" />
+    <Compile Include="Routes\ServiceRoutesTests.cs" />
     <Compile Include="ServiceControllerPerfTests.cs" />
     <Compile Include="ServiceControllerTests.cs" />
+    <Compile Include="ServiceCreationTests.cs" />
     <Compile Include="ServiceHostTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ServiceStackHandlerPathTests.cs" />
@@ -193,10 +193,6 @@
     <Content Include="lib\hiro\NGenerics.dll" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\RazorEngine\RazorEngine.csproj">
-      <Project>{64128C85-B9AF-4B4C-BE83-04983EF7F8C9}</Project>
-      <Name>RazorEngine</Name>
-    </ProjectReference>
     <ProjectReference Include="..\..\src\ServiceStack.Common\ServiceStack.Common.csproj">
       <Project>{982416DB-C143-4028-A0C3-CF41892D18D3}</Project>
       <Name>ServiceStack.Common</Name>
@@ -204,6 +200,10 @@
     <ProjectReference Include="..\..\src\ServiceStack.Interfaces\ServiceStack.Interfaces.csproj">
       <Project>{42E1C8C0-A163-44CC-92B1-8F416F2C0B01}</Project>
       <Name>ServiceStack.Interfaces</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\src\ServiceStack.RazorEngine\ServiceStack.RazorEngine.csproj">
+      <Project>{64128C85-B9AF-4B4C-BE83-04983EF7F8C9}</Project>
+      <Name>ServiceStack.RazorEngine</Name>
     </ProjectReference>
     <ProjectReference Include="..\..\src\ServiceStack.ServiceInterface\ServiceStack.ServiceInterface.csproj">
       <Project>{5A315F92-80D2-4C60-A5A4-22E027AC7E7E}</Project>

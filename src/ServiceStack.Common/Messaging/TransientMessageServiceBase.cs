@@ -1,11 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 
 namespace ServiceStack.Messaging
 {
 	public abstract class TransientMessageServiceBase
-		: IMessageService
+		: IMessageService, IMessageHandlerDisposer
 	{
 		private bool isRunning;
 		public const int DefaultRetryCount = 2; //Will be a total of 3 attempts
@@ -15,7 +16,7 @@ namespace ServiceStack.Messaging
 
 		public int PoolSize { get; protected set; } //use later
 
-		public abstract IMessageQueueClientFactory MessageFactory { get; }
+		public abstract IMessageFactory MessageFactory { get; }
 
 		protected TransientMessageServiceBase()
 			: this(DefaultRetryCount, null)
@@ -38,7 +39,8 @@ namespace ServiceStack.Messaging
 			RegisterHandler(processMessageFn, null);
 		}
 
-		public void RegisterHandler<T>(Func<IMessage<T>, object> processMessageFn, Action<Exception> processExceptionEx)
+		public void RegisterHandler<T>(Func<IMessage<T>, object> processMessageFn,
+			Action<IMessage<T>, Exception> processExceptionEx)
 		{
 			if (handlerMap.ContainsKey(typeof(T)))
 			{
@@ -48,9 +50,32 @@ namespace ServiceStack.Messaging
 			handlerMap[typeof(T)] = CreateMessageHandlerFactory(processMessageFn, processExceptionEx);
 		}
 
-		protected IMessageHandlerFactory CreateMessageHandlerFactory<T>(Func<IMessage<T>, object> processMessageFn, Action<Exception> processExceptionEx)
+        public IMessageHandlerStats GetStats()
+        {
+            var total = new MessageHandlerStats("All Handlers");
+            messageHandlers.ToList().ForEach(x => total.Add(x.GetStats()));
+            return total;
+        }
+
+	    public string GetStatsDescription()
 		{
-			return new TransientMessageHandlerFactory<T>(this, processMessageFn, processExceptionEx);
+			var sb = new StringBuilder("#MQ HOST STATS:\n");
+			sb.AppendLine("===============");
+			foreach (var messageHandler in messageHandlers)
+			{
+				sb.AppendLine(messageHandler.GetStats().ToString());
+				sb.AppendLine("---------------");
+			}
+			return sb.ToString();
+		}
+
+		protected IMessageHandlerFactory CreateMessageHandlerFactory<T>(
+			Func<IMessage<T>, object> processMessageFn, 
+			Action<IMessage<T>, Exception> processExceptionEx)
+		{
+			return new MessageHandlerFactory<T>(this, processMessageFn, processExceptionEx) {
+				RetryCount = RetryCount,
+			};
 		}
 
 		public virtual void Start()

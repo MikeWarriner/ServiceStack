@@ -1,8 +1,10 @@
 using System;
 using System.IO;
+using System.Net;
 using System.Text;
 using ServiceStack.Common.Web;
 using ServiceStack.Logging;
+using ServiceStack.MiniProfiler;
 using ServiceStack.Service;
 using ServiceStack.ServiceHost;
 using ServiceStack.Text;
@@ -13,19 +15,29 @@ namespace ServiceStack.WebHost.Endpoints.Extensions
 	{
 		private static readonly ILog Log = LogManager.GetLogger(typeof(HttpResponseExtensions));
 
-		public static bool WriteToOutputStream(Stream responseStream, object result)
+		public static bool WriteToOutputStream(IHttpResponse response, object result)
 		{
+			//var responseStream = response.OutputStream;
+
 			var streamWriter = result as IStreamWriter;
 			if (streamWriter != null)
 			{
-				streamWriter.WriteTo(responseStream);
+				streamWriter.WriteTo(response.OutputStream);
 				return true;
 			}
 
 			var stream = result as Stream;
 			if (stream != null)
 			{
-				stream.WriteTo(responseStream);
+				stream.WriteTo(response.OutputStream);
+				return true;
+			}
+
+			var bytes = result as byte[];
+			if (bytes != null)
+			{
+				response.ContentType = ContentType.Binary;
+				response.OutputStream.Write(bytes, 0, bytes.Length);
 				return true;
 			}
 
@@ -47,7 +59,7 @@ namespace ServiceStack.WebHost.Endpoints.Extensions
 		{
 			if (result == null) return true;
 
-			var serializationContext = new HttpRequestContext(httpReq, result);
+			var serializationContext = new HttpRequestContext(httpReq, httpRes, result);
 			var httpResult = result as IHttpResult;
 			if (httpResult != null)
 			{
@@ -56,7 +68,8 @@ namespace ServiceStack.WebHost.Endpoints.Extensions
 					httpResult.ResponseFilter = EndpointHost.AppHost.ContentTypeFilters;
 				}
 				httpResult.RequestContext = serializationContext;
-				var httpResSerializer = httpResult.ResponseFilter.GetResponseSerializer(httpReq.ResponseContentType);
+                serializationContext.ResponseContentType = httpResult.ContentType ?? httpReq.ResponseContentType;
+                var httpResSerializer = httpResult.ResponseFilter.GetResponseSerializer(serializationContext.ResponseContentType);
 				return httpRes.WriteToResponse(httpResult, httpResSerializer, serializationContext, bodyPrefix, bodySuffix);
 			}
 
@@ -82,99 +95,121 @@ namespace ServiceStack.WebHost.Endpoints.Extensions
 		/// <returns></returns>
 		public static bool WriteToResponse(this IHttpResponse response, object result, ResponseSerializerDelegate defaultAction, IRequestContext serializerCtx, byte[] bodyPrefix, byte[] bodySuffix)
 		{
-			var defaultContentType = serializerCtx.ResponseContentType;
-			try
+			using (Profiler.Current.Step("Writing to Response"))
 			{
-				if (result == null) return true;
-
-				foreach (var globalResponseHeader in EndpointHost.Config.GlobalResponseHeaders)
+				var defaultContentType = serializerCtx.ResponseContentType;
+				try
 				{
-					response.AddHeader(globalResponseHeader.Key, globalResponseHeader.Value);
-				}
+					if (result == null) return true;
 
-				var httpResult = result as IHttpResult;
-				if (httpResult != null)
-				{
-					response.StatusCode = (int)httpResult.StatusCode;
-					response.StatusDescription = httpResult.StatusDescription ?? httpResult.StatusCode.ToString();
-					if (string.IsNullOrEmpty(httpResult.ContentType))
+					foreach (var globalResponseHeader in EndpointHost.Config.GlobalResponseHeaders)
 					{
-						httpResult.ContentType = defaultContentType;
+						response.AddHeader(globalResponseHeader.Key, globalResponseHeader.Value);
 					}
-					response.ContentType = httpResult.ContentType;
-				}
 
-				/* Mono Error: Exception: Method not found: 'System.Web.HttpResponse.get_Headers' */
-				var responseOptions = result as IHasOptions;
-				if (responseOptions != null)
-				{
-					//Reserving options with keys in the format 'xx.xxx' (No Http headers contain a '.' so its a safe restriction)
-					const string reservedOptions = ".";
-
-					foreach (var responseHeaders in responseOptions.Options)
+					var httpResult = result as IHttpResult;
+					if (httpResult != null)
 					{
-						if (responseHeaders.Key.Contains(reservedOptions)) continue;
-
-						Log.DebugFormat("Setting Custom HTTP Header: {0}: {1}", responseHeaders.Key, responseHeaders.Value);
-						response.AddHeader(responseHeaders.Key, responseHeaders.Value);
+						response.StatusCode = (int) httpResult.StatusCode;
+						response.StatusDescription = httpResult.StatusDescription ?? httpResult.StatusCode.ToString();
+						if (string.IsNullOrEmpty(httpResult.ContentType))
+						{
+							httpResult.ContentType = defaultContentType;
+						}
+						response.ContentType = httpResult.ContentType;
 					}
-				}
 
-				if (WriteToOutputStream(response.OutputStream, result))
-				{
-					return true;
-				}
+					/* Mono Error: Exception: Method not found: 'System.Web.HttpResponse.get_Headers' */
+					var responseOptions = result as IHasOptions;
+					if (responseOptions != null)
+					{
+						//Reserving options with keys in the format 'xx.xxx' (No Http headers contain a '.' so its a safe restriction)
+						const string reservedOptions = ".";
 
-				if (httpResult != null)
-				{
-					result = httpResult.Response;
-				}
+						foreach (var responseHeaders in responseOptions.Options)
+						{
+							if (responseHeaders.Key.Contains(reservedOptions)) continue;
 
-				//ContentType='text/html' is the default for a HttpResponse
-				//Do not override if another has been set
-				if (response.ContentType == null || response.ContentType == ContentType.Html)
-				{
-					response.ContentType = defaultContentType;
-				}
+							Log.DebugFormat("Setting Custom HTTP Header: {0}: {1}", responseHeaders.Key, responseHeaders.Value);
+							response.AddHeader(responseHeaders.Key, responseHeaders.Value);
+						}
+					}
 
-				var responseText = result as string;
-				if (responseText != null)
-				{
-					if (bodyPrefix != null) response.OutputStream.Write(bodyPrefix, 0, bodyPrefix.Length);
-					WriteTextToResponse(response, responseText, defaultContentType);
-					if (bodySuffix != null) response.OutputStream.Write(bodySuffix, 0, bodySuffix.Length);
-					return true;
-				}
+					if (WriteToOutputStream(response, result))
+					{
+						response.Flush(); //required for Compression
+						return true;
+					}
 
-				if (defaultAction == null)
-				{
-					throw new ArgumentNullException("defaultAction", string.Format(
+					if (httpResult != null)
+					{
+						result = httpResult.Response;
+					}
+
+					//ContentType='text/html' is the default for a HttpResponse
+					//Do not override if another has been set
+					if (response.ContentType == null || response.ContentType == ContentType.Html)
+					{
+						response.ContentType = defaultContentType;
+					}
+
+					var responseText = result as string;
+					if (responseText != null)
+					{
+						if (bodyPrefix != null) response.OutputStream.Write(bodyPrefix, 0, bodyPrefix.Length);
+						WriteTextToResponse(response, responseText, defaultContentType);
+						if (bodySuffix != null) response.OutputStream.Write(bodySuffix, 0, bodySuffix.Length);
+						return true;
+					}
+
+					if (defaultAction == null)
+					{
+						throw new ArgumentNullException("defaultAction", string.Format(
 						"As result '{0}' is not a supported responseType, a defaultAction must be supplied",
-						result.GetType().Name));
+						(result != null ? result.GetType().Name : "")));
+					}
+
+					if (bodyPrefix != null) response.OutputStream.Write(bodyPrefix, 0, bodyPrefix.Length);
+					if (result != null) defaultAction(serializerCtx, result, response);
+					if (bodySuffix != null) response.OutputStream.Write(bodySuffix, 0, bodySuffix.Length);
+
+					return false;
 				}
+				catch (Exception originalEx)
+				{
+					//TM: It would be good to handle 'remote end dropped connection' problems here. Arguably they should at least be suppressible via configuration
 
-				if (bodyPrefix != null) response.OutputStream.Write(bodyPrefix, 0, bodyPrefix.Length);
-				defaultAction(serializerCtx, result, response);
-				if (bodySuffix != null) response.OutputStream.Write(bodySuffix, 0, bodySuffix.Length);
+					//DB: Using standard ServiceStack configuration method
+					if (!EndpointHost.Config.WriteErrorsToResponse) throw;
 
-				return false;
-			}
-			catch (Exception ex)
-			{
-				var errorMessage = string.Format("Error occured while Processing Request: [{0}] {1}", 
-					ex.GetType().Name, ex.Message);
-				Log.Error(errorMessage, ex);
+					var errorMessage = string.Format(
+					"Error occured while Processing Request: [{0}] {1}", originalEx.GetType().Name, originalEx.Message);
 
-				var operationName = result != null
-					? result.GetType().Name.Replace("Response", "")
-					: "OperationName";
+					Log.Error(errorMessage, originalEx);
 
-				response.WriteErrorToResponse(defaultContentType, operationName, errorMessage, ex);
-				return true;
-			}
-			finally
-			{
-				response.Close();
+					var operationName = result != null
+					                    ? result.GetType().Name.Replace("Response", "")
+					                    : "OperationName";
+
+					try
+					{
+						if (!response.IsClosed)
+						{
+							response.WriteErrorToResponse(defaultContentType, operationName, errorMessage, originalEx);
+						}
+					}
+					catch (Exception writeErrorEx)
+					{
+						//Exception in writing to response should not hide the original exception
+						Log.Info("Failed to write error to response: {0}", writeErrorEx);
+						throw originalEx;
+					}
+					return true;
+				}
+				finally
+				{
+					response.Close();
+				}
 			}
 		}
 
@@ -198,58 +233,72 @@ namespace ServiceStack.WebHost.Endpoints.Extensions
 			}
 		}
 
+		public static void WriteError(this IHttpResponse response, IHttpRequest httpReq, object dto, string errorMessage)
+		{
+			WriteErrorToResponse(response, httpReq.ResponseContentType, dto.GetType().Name, errorMessage, null,
+				HttpStatusCode.InternalServerError);
+		}
+
 		public static void WriteErrorToResponse(this IHttpResponse response, string contentType,
 			string operationName, string errorMessage, Exception ex)
+		{
+			WriteErrorToResponse(response, contentType, operationName, errorMessage, ex,
+				HttpStatusCode.InternalServerError);
+		}
+
+		public static void WriteErrorToResponse(this IHttpResponse response, string contentType,
+			string operationName, string errorMessage, Exception ex, HttpStatusCode statusCode)
 		{
 			switch (contentType)
 			{
 				case ContentType.Xml:
-					WriteXmlErrorToResponse(response, operationName, errorMessage, ex);
+					WriteXmlErrorToResponse(response, operationName, errorMessage, ex, statusCode);
 					break;
 				case ContentType.Json:
-					WriteJsonErrorToResponse(response, operationName, errorMessage, ex);
+					WriteJsonErrorToResponse(response, operationName, errorMessage, ex, statusCode);
 					break;
 				case ContentType.Jsv:
-					WriteJsvErrorToResponse(response, operationName, errorMessage, ex);
+					WriteJsvErrorToResponse(response, operationName, errorMessage, ex, statusCode);
 					break;
 				default:
-					WriteXmlErrorToResponse(response, operationName, errorMessage, ex);
+					WriteXmlErrorToResponse(response, operationName, errorMessage, ex, statusCode);
 					break;
 			}
 		}
 
 		public static void WriteErrorToResponse(this IHttpResponse response,
-			EndpointAttributes contentType, string operationName, string errorMessage, Exception ex)
+			EndpointAttributes contentType, string operationName, string errorMessage,
+			Exception ex, HttpStatusCode statusCode)
 		{
 			switch (contentType)
 			{
 				case EndpointAttributes.Xml:
-					WriteXmlErrorToResponse(response, operationName, errorMessage, ex);
+					WriteXmlErrorToResponse(response, operationName, errorMessage, ex, statusCode);
 					break;
 
 				case EndpointAttributes.Json:
-					WriteJsonErrorToResponse(response, operationName, errorMessage, ex);
+					WriteJsonErrorToResponse(response, operationName, errorMessage, ex, statusCode);
 					break;
 
 				case EndpointAttributes.Jsv:
-					WriteJsvErrorToResponse(response, operationName, errorMessage, ex);
+					WriteJsvErrorToResponse(response, operationName, errorMessage, ex, statusCode);
 					break;
 
 				default:
-					WriteXmlErrorToResponse(response, operationName, errorMessage, ex);
+					WriteXmlErrorToResponse(response, operationName, errorMessage, ex, statusCode);
 					break;
 			}
 		}
 
-		private static void WriteErrorTextToResponse(this IHttpResponse response, StringBuilder sb, string contentType)
+		private static void WriteErrorTextToResponse(this IHttpResponse response, StringBuilder sb,
+			string contentType, HttpStatusCode statusCode)
 		{
-			response.StatusCode = 500;
+			response.StatusCode = (int)statusCode;
 			WriteTextToResponse(response, sb.ToString(), contentType);
 			response.Close();
 		}
 
-		private static void WriteXmlErrorToResponse(this IHttpResponse response,
-			string operationName, string errorMessage, Exception ex)
+		private static void WriteXmlErrorToResponse(this IHttpResponse response, string operationName, string errorMessage, Exception ex, HttpStatusCode statusCode)
 		{
 			var sb = new StringBuilder();
 			sb.AppendFormat("<{0}Response xmlns:i=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns=\"{1}\">\n",
@@ -261,11 +310,10 @@ namespace ServiceStack.WebHost.Endpoints.Extensions
 			sb.AppendLine("</ResponseStatus>");
 			sb.AppendFormat("</{0}Response>", operationName);
 
-			response.WriteErrorTextToResponse(sb, ContentType.Xml);
+			response.WriteErrorTextToResponse(sb, ContentType.Xml, statusCode);
 		}
 
-		private static void WriteJsonErrorToResponse(this IHttpResponse response,
-			string operationName, string errorMessage, Exception ex)
+		private static void WriteJsonErrorToResponse(this IHttpResponse response, string operationName, string errorMessage, Exception ex, HttpStatusCode statusCode)
 		{
 			var sb = new StringBuilder();
 			sb.AppendLine("{");
@@ -276,11 +324,10 @@ namespace ServiceStack.WebHost.Endpoints.Extensions
 			sb.AppendLine("}");
 			sb.AppendLine("}");
 
-			response.WriteErrorTextToResponse(sb, ContentType.Json);
+			response.WriteErrorTextToResponse(sb, ContentType.Json, statusCode);
 		}
 
-		private static void WriteJsvErrorToResponse(this IHttpResponse response,
-			string operationName, string errorMessage, Exception ex)
+		private static void WriteJsvErrorToResponse(this IHttpResponse response, string operationName, string errorMessage, Exception ex, HttpStatusCode statusCode)
 		{
 			var sb = new StringBuilder();
 			sb.Append("{");
@@ -291,7 +338,7 @@ namespace ServiceStack.WebHost.Endpoints.Extensions
 			sb.Append("}");
 			sb.Append("}");
 
-			response.WriteErrorTextToResponse(sb, ContentType.Jsv);
+			response.WriteErrorTextToResponse(sb, ContentType.Jsv, statusCode);
 		}
 
 	}

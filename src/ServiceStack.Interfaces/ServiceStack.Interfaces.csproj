@@ -31,7 +31,6 @@
     <IsWebBootstrapper>false</IsWebBootstrapper>
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
-    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -53,6 +52,22 @@
     <WarningLevel>4</WarningLevel>
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
     <DocumentationFile>bin\Release\ServiceStack.Interfaces.XML</DocumentationFile>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'MONOTOUCH|AnyCPU'">
+    <OutputPath>bin\MONOTOUCH\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <DocumentationFile>bin\Release\ServiceStack.Interfaces.XML</DocumentationFile>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <CodeAnalysisLogFile>bin\Release\ServiceStack.Interfaces.dll.CodeAnalysisLog.xml</CodeAnalysisLogFile>
+    <CodeAnalysisUseTypeNameInSuppression>true</CodeAnalysisUseTypeNameInSuppression>
+    <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSetDirectories>;C:\Program Files\Microsoft Visual Studio 10.0\Team Tools\Static Analysis Tools\\Rule Sets</CodeAnalysisRuleSetDirectories>
+    <CodeAnalysisIgnoreBuiltInRuleSets>false</CodeAnalysisIgnoreBuiltInRuleSets>
+    <CodeAnalysisRuleDirectories>;C:\Program Files\Microsoft Visual Studio 10.0\Team Tools\Static Analysis Tools\FxCop\\Rules</CodeAnalysisRuleDirectories>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -84,6 +99,8 @@
     <Compile Include="CacheAccess\IMemcachedClient.cs" />
     <Compile Include="CacheAccess\IPersistenceProviderCache.cs" />
     <Compile Include="CacheAccess\IPersistenceProviderCacheFactory.cs" />
+    <Compile Include="CacheAccess\ISession.cs" />
+    <Compile Include="CacheAccess\ISessionFactory.cs" />
     <Compile Include="Configuration\IFactoryProvider.cs" />
     <Compile Include="Configuration\IContainerAdapter.cs" />
     <Compile Include="Configuration\IResourceManager.cs" />
@@ -97,6 +114,7 @@
     <Compile Include="DataAccess\IAggregatable.cs" />
     <Compile Include="DataAccess\IBasicPersistenceProvider.cs" />
     <Compile Include="DataAccess\IBasicPersistenceProvider.Generic.cs" />
+    <Compile Include="DataAccess\IHasDbConnection.cs" />
     <Compile Include="DataAccess\IPersistenceProvider.cs" />
     <Compile Include="DataAccess\IPersistenceProviderManager.cs" />
     <Compile Include="DataAccess\IPersistenceProviderManagerFactory.cs" />
@@ -138,6 +156,8 @@
     <Compile Include="Logging\LogManager.cs" />
     <Compile Include="Logging\Support\Logging\ConsoleLogFactory.cs" />
     <Compile Include="Logging\Support\Logging\ConsoleLogger.cs" />
+    <Compile Include="Logging\Support\Logging\TestLogFactory.cs" />
+    <Compile Include="Logging\Support\Logging\TestLogger.cs" />
     <Compile Include="Logging\Support\Logging\DebugLogFactory.cs" />
     <Compile Include="Logging\Support\Logging\DebugLogger.cs" />
     <Compile Include="Logging\Support\Logging\NullDebugLogger.cs" />
@@ -155,8 +175,10 @@
     <Compile Include="Messaging\IMessageQueueClient.cs" />
     <Compile Include="Messaging\IMessageQueueClientFactory.cs" />
     <Compile Include="Messaging\IMessageService.cs" />
-    <Compile Include="Messaging\Message.cs" />
+    <Compile Include="Messaging\MessageFactory.cs" />
     <Compile Include="Messaging\MessageError.cs" />
+    <Compile Include="Messaging\MessageHandlerStats.cs" />
+    <Compile Include="Messaging\MessageOption.cs" />
     <Compile Include="Messaging\MessagingException.cs" />
     <Compile Include="Messaging\QueueNames.cs" />
     <Compile Include="Messaging\UnRetryableMessagingException.cs" />
@@ -189,6 +211,11 @@
     <Compile Include="SearchIndex\FullTextIndexAttribute.cs" />
     <Compile Include="SearchIndex\FullTextIndexDocumentAttribute.cs" />
     <Compile Include="SearchIndex\FullTextIndexFieldAttribute.cs" />
+    <Compile Include="ServiceHost\ICanResolve.cs" />
+    <Compile Include="ServiceHost\ICookies.cs" />
+    <Compile Include="ServiceHost\IHasRequestFilter.cs" />
+    <Compile Include="ServiceHost\IHasResponseFilter.cs" />
+    <Compile Include="ServiceHost\IRequestLogger.cs" />
     <Compile Include="ServiceHost\IRestPatchService.cs" />
     <Compile Include="ServiceHost\EndpointAttributes.cs" />
     <Compile Include="ServiceHost\Feature.cs" />

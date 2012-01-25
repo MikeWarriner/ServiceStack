@@ -39,15 +39,14 @@ namespace ServiceStack.WebHost.Endpoints
 				var request = CreateRequest(httpReq, operationName);
 
 				var response = ExecuteService(request,
-					HandlerAttributes | GetEndpointAttributes(httpReq), httpReq);
+					HandlerAttributes | GetEndpointAttributes(httpReq), httpReq, httpRes);
 
 				WriteDebugResponse(httpRes, response);
 			}
 			catch (Exception ex)
 			{
-				var errorMessage = string.Format("Error occured while Processing Request: {0}", ex.Message);
-
-				httpRes.WriteErrorToResponse(EndpointAttributes.Jsv, operationName, errorMessage, ex);
+				if (!EndpointHost.Config.WriteErrorsToResponse) throw;
+				HandleException(HandlerContentType, httpRes, operationName, ex);
 			}
 		}
 

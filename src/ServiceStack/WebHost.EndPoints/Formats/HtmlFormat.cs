@@ -109,6 +109,7 @@ DT {{
   margin: 10px 0 5px 0;
   font: bold 18px Helvetica, Verdana, Arial;
   width: 200px;
+  overflow: hidden;
   clear: left;
   float: left;
   display:block;
@@ -243,22 +244,23 @@ H3 {{
   clear: left;
 }}
 </style>
+{2}
 </head>
 <body>
 
 <div id=""mask""></div>
 
-<h1>{2}</h1>
+<h1>{3}</h1>
 
 <div id=""lnks"">
   <a href=""javascript:showJson()"">view json datasource</a>
   <b>from original url:</b>
-  <a href=""{3}"">{3}</a>
+  <a href=""{4}"">{4}</a>
   <b>in other formats:</b>
-  <a href=""{3}?format=json"">json</a>
-  <a href=""{3}?format=xml"">xml</a>
-  <a href=""{3}?format=csv"">csv</a>
-  <a href=""{3}?format=jsv"">jsv</a>
+  <a href=""{4}format=json"">json</a>
+  <a href=""{4}format=xml"">xml</a>
+  <a href=""{4}format=csv"">csv</a>
+  <a href=""{4}format=jsv"">jsv</a>
 </div>
 
 <div id=""body"">
@@ -286,12 +288,12 @@ var doc = document, win = window,
 $.each = function(arr, fn) {{ $each.call(arr, fn); }};
 
 var splitCase = function(t) {{ return typeof t != 'string' ? t : t.replace(/([A-Z]|[0-9]+)/g, ' $1'); }},
-    uniqueKeys = function(m){{ var h={{}}; for (var i=0,len=m.length; i<len; i++) for (var k in m[i]) h[k] = k; return h; }},
-    keys = function(o){{ var a=[]; for (var k in o) a.push(k); return a; }}
+    uniqueKeys = function(m){{ var h={{}}; for (var i=0,len=m.length; i<len; i++) for (var k in m[i]) if (show(k)) h[k] = k; return h; }},
+    keys = function(o){{ var a=[]; for (var k in o) if (show(k)) a.push(k); return a; }}
 var tbls = [];
 
 function val(m) {{
-  if (typeof m == 'undefined') return '';
+  if (m == null) return '';
   if (typeof m == 'number') return num(m);
   if (typeof m == 'string') return str(m);
   if (typeof m == 'boolean') return m ? 'true' : 'false';
@@ -304,9 +306,10 @@ function str(m) {{
 function date(s) {{ return new Date(parseFloat(/Date\(([^)]+)\)/.exec(s)[1])); }}
 function pad(d) {{ return d < 10 ? '0'+d : d; }}
 function dmft(d) {{ return d.getFullYear() + '/' + pad(d.getMonth() + 1) + '/' + pad(d.getDate()); }}
+function show(k) {{ return typeof k != 'string' || k.substr(0,2) != '__'; }}
 function obj(m) {{
   var sb = '<dl>';
-  for (var k in m) sb += '<dt class=""ib"">' + splitCase(k) + '</dt><dd>' + val(m[k]) + '</dd>';
+  for (var k in m) if (show(k)) sb += '<dt class=""ib"">' + splitCase(k) + '</dt><dd>' + val(m[k]) + '</dd>';
   sb += '</dl>';
   return sb;
 }}
@@ -326,7 +329,7 @@ function makeRows(h,m) {{
   for (var r=0,len=m.length; r<len; r++) {{
     sb += '<tr>';
     var row = m[r];
-    for (var k in h) sb += '<td>' + val(row[k]) + '</td>';
+    for (var k in h) if (show(k)) sb += '<td>' + val(row[k]) + '</td>';
     sb += '</tr>';
   }}  
   return sb;
@@ -350,6 +353,7 @@ doc.onclick = function(e) {{
     $.each($$('TH'), function(i,th){{ if (th == el) return; th.className = null; }});
     clearSel();
     var ids=el.id.split('-'), tId=ids[1], cId=ids[2];
+	if (!tbls[tId]) return;
     var tbl=tbls[tId].slice(0), h=uniqueKeys(tbl), col=keys(h)[cId], tbody=el.parentNode.parentNode.nextSibling;
     if (!el.className){{ setTableBody(tbody, makeRows(h,tbls[tId])); return; }}
     var d=el.className=='asc'?1:-1;
@@ -418,6 +422,8 @@ function enc(html) {{
 				.Replace("format=shtm", "")
 				.TrimEnd('?', '&');
 
+			url += url.Contains("?") ? "&" : "?";
+
 			var now = DateTime.UtcNow;
 
 			var requestName = httpReq.OperationName ?? dto.GetType().Name;
@@ -425,6 +431,7 @@ function enc(html) {{
 			var html = string.Format(Template,
 			  json,
 			  string.Format(TitleFormat, requestName, now),
+			  MiniProfiler.Profiler.RenderIncludes(),
 			  string.Format(HtmlTitleFormat, requestName, now),
 			  url);
 

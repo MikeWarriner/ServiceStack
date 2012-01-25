@@ -61,21 +61,29 @@ namespace ServiceStack.CacheAccess.Providers
 			return ToSerializedString(FactoryFn(), this.SerializationContext);
 		}
 
-		public byte[] ToCompressedResult()
+		public byte[] ToCompressedBytes()
 		{
-			return ToCompressedResult(FactoryFn(), ContentType, CompressionType);
+			return ToCompressedBytes(FactoryFn(), ContentType, CompressionType);
 		}
 
-		public static byte[] ToCompressedResult(object result, string contentType, string compressionType)
+		public static byte[] ToCompressedBytes(object result, string contentType, string compressionType)
 		{
 			result.ThrowIfNull("result");
 			contentType.ThrowIfNull("MimeType");
 
 			var serializeCtx = new SerializationContext(contentType) { CompressionType = compressionType };
-			return ToCompressedResult(ToSerializedString(result, serializeCtx), compressionType);
+            return ToCompressedBytes(result, serializeCtx);
 		}
 
-		public static byte[] ToCompressedResult(string serializedResult, string compressionType)
+        public static byte[] ToCompressedBytes(object result, IRequestContext context)
+        {
+            result.ThrowIfNull("result");
+            context.ThrowIfNull("context");
+
+            return ToCompressedBytes(ToSerializedString(result, context), context.CompressionType);
+        }
+
+		public static byte[] ToCompressedBytes(string serializedResult, string compressionType)
 		{
 			if (serializedResult == null) return null;
 
@@ -134,12 +142,12 @@ namespace ServiceStack.CacheAccess.Providers
 			}
 		}
 
-		public static object ToOptimizedResult(string contentType, string compressionType, T result)
+		public static object ToOptimizedResult(IRequestContext context, T result)
 		{
-			var serializeCtx = new SerializationContext(contentType) { CompressionType = compressionType };
-			return compressionType == null
-				? (object)ToSerializedString(result, serializeCtx)
-				: ToCompressedResult(result, contentType, compressionType);
+			return context.CompressionType == null
+                ? (object)ToSerializedString(result, context)
+				: new CompressedResult(ToCompressedBytes(result, context),
+                    context.CompressionType, context.ContentType);
 		}
 
 	}

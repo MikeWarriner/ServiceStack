@@ -2,12 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.Serialization;
 using System.Web;
 using ServiceStack.Common.Extensions;
 using ServiceStack.Common.Web;
 using ServiceStack.Logging;
 using ServiceStack.ServiceHost;
 using ServiceStack.ServiceModel.Serialization;
+using ServiceStack.Text;
 using ServiceStack.WebHost.Endpoints.Extensions;
 
 namespace ServiceStack.WebHost.Endpoints.Support
@@ -43,7 +45,7 @@ namespace ServiceStack.WebHost.Endpoints.Support
 		}
 
 		public abstract object CreateRequest(IHttpRequest request, string operationName);
-		public abstract object GetResponse(IHttpRequest httpReq, object request);
+		public abstract object GetResponse(IHttpRequest httpReq, IHttpResponse httpRes, object request);
 
 		public virtual void ProcessRequest(IHttpRequest httpReq, IHttpResponse httpRes, string operationName)
 		{
@@ -63,17 +65,23 @@ namespace ServiceStack.WebHost.Endpoints.Support
 				}
 				catch (Exception ex)
 				{
-					var log = EndpointHost.Config.LogFactory.GetLogger(typeof(EndpointHandlerBase));
-					log.ErrorFormat("Could not deserialize '{0}' request using KeyValueDataContractDeserializer: '{1}'.\nError: '{2}'",
-									operationType, queryString, ex);
-					throw;
+					var msg = "Could not deserialize '{0}' request using KeyValueDataContractDeserializer: '{1}'.\nError: '{2}'"
+						.Fmt(operationType, queryString, ex);
+					throw new SerializationException(msg);
 				}
 			}
 
 			var isFormData = httpReq.HasAnyOfContentTypes(ContentType.FormUrlEncoded, ContentType.MultiPartFormData);
 			if (isFormData)
 			{
-				return KeyValueDataContractDeserializer.Instance.Parse(httpReq.FormData, operationType);
+				try
+				{
+					return KeyValueDataContractDeserializer.Instance.Parse(httpReq.FormData, operationType);
+				}
+				catch (Exception ex)
+				{
+					throw new SerializationException("Error deserializing FormData: " + httpReq.FormData, ex);
+				}
 			}
 
 			try
@@ -83,10 +91,9 @@ namespace ServiceStack.WebHost.Endpoints.Support
 			}
 			catch (Exception ex)
 			{
-				var log = EndpointHost.Config.LogFactory.GetLogger(typeof(EndpointHandlerBase));
-				log.ErrorFormat("Could not deserialize '{0}' request using {1}'\nError: {2}",
-								contentType, operationType, ex);
-				throw;
+				var msg = "Could not deserialize '{0}' request using {1}'\nError: {2}"
+					.Fmt(contentType, operationType, ex);
+				throw new SerializationException(msg);
 			}
 		}
 
@@ -157,9 +164,10 @@ namespace ServiceStack.WebHost.Endpoints.Support
 				: EndpointHost.ServiceOperations.GetOperationType(operationName);
 		}
 
-		protected static object ExecuteService(object request, EndpointAttributes endpointAttributes, IHttpRequest httpReq)
+		protected static object ExecuteService(object request, EndpointAttributes endpointAttributes, 
+			IHttpRequest httpReq, IHttpResponse httpRes)
 		{
-			return EndpointHost.ExecuteService(request, endpointAttributes, httpReq);
+			return EndpointHost.ExecuteService(request, endpointAttributes, httpReq, httpRes);
 		}
 
 		public EndpointAttributes GetEndpointAttributes(System.ServiceModel.OperationContext operationContext)
@@ -267,5 +275,30 @@ namespace ServiceStack.WebHost.Endpoints.Support
 					string.Format("The operation '{0}' does not exist for this service", operationName));
 			}
 		}
+
+		protected void HandleException(string responseContentType, IHttpResponse httpRes, string operationName, Exception ex)
+		{
+			var errorMessage = string.Format("Error occured while Processing Request: {0}", ex.Message);
+			Log.Error(errorMessage, ex);
+
+			try
+			{
+				var statusCode = ex is SerializationException ? HttpStatusCode.BadRequest : HttpStatusCode.InternalServerError;
+				//httpRes.WriteToResponse always calls .Close in it's finally statement so 
+				//if there is a problem writing to response, by now it will be closed
+				if (!httpRes.IsClosed)
+				{
+					httpRes.WriteErrorToResponse(responseContentType, operationName, errorMessage, ex, statusCode);
+				}
+			}
+			catch (Exception writeErrorEx)
+			{
+				//Exception in writing to response should not hide the original exception
+				Log.Info("Failed to write error to response: {0}", writeErrorEx);
+				//rethrow the original exception
+				throw ex;
+			}
+		}
+	
 	}
 }

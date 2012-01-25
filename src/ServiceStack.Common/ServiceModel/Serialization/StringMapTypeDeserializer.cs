@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Runtime.Serialization;
 using ServiceStack.Common.Utils;
 using ServiceStack.Logging;
+using ServiceStack.Text;
 using ServiceStack.Text.Common;
 using ServiceStack.Text.Jsv;
 
@@ -29,11 +30,14 @@ namespace ServiceStack.ServiceModel.Serialization
 
 		private readonly Type type;
 		private readonly Dictionary<string, PropertySerializerEntry> propertySetterMap
-			= new Dictionary<string, PropertySerializerEntry>();
+			= new Dictionary<string, PropertySerializerEntry>(StringComparer.InvariantCultureIgnoreCase);
 
 		public StringMapTypeDeserializer(Type type)
 		{
 			this.type = type;
+
+			if (type.IsOrHasGenericInterfaceTypeOf(typeof(IEnumerable<>)))
+				return;
 
 			foreach (var propertyInfo in type.GetProperties())
 			{

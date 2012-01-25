@@ -26,8 +26,28 @@ namespace ServiceStack.ServiceInterface.ServiceModel
 		/// </summary>
 		public ResponseStatus()
 		{
-			this.Errors = new List<ResponseError>();
 		}
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ResponseStatus"/> class.
+        /// 
+        /// A response status with an errorcode == failure
+        /// </summary>
+        public ResponseStatus(string errorCode)
+        {
+            this.ErrorCode = errorCode;
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ResponseStatus"/> class.
+        /// 
+        /// A response status with an errorcode == failure
+        /// </summary>
+        public ResponseStatus(string errorCode, string message)
+            : this(errorCode)
+        {
+            this.Message = message;
+        }
         
 		/// <summary>
 		/// Holds the custom ErrorCode enum if provided in ValidationException

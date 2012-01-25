@@ -13,13 +13,19 @@ namespace ServiceStack.ServiceClient.Web
 
 		public int StatusCode { get; set; }
 
+		public string StatusDescription { get; set; }
+
 		public object ResponseDto { get; set; }
 
 		private string errorCode;
 
 		private void ParseResponseDto()
 		{
-			if (ResponseDto == null) return;
+			if (ResponseDto == null)
+			{
+				errorCode = StatusDescription;
+				return;
+			}
 			var jsv = TypeSerializer.SerializeToString(ResponseDto);
 			var map = TypeSerializer.DeserializeFromString<Dictionary<string, string>>(jsv);
 			string responseStatus;

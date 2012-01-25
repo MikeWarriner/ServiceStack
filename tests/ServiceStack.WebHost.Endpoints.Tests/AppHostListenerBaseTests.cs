@@ -103,7 +103,7 @@ namespace ServiceStack.WebHost.Endpoints.Tests
 			int errorCount = 0;
 			try
 			{
-				var call1 = new StreamReader(WebRequest.Create(missingUrl).GetResponse().GetResponseStream()).ReadToEnd();
+				new StreamReader(WebRequest.Create(missingUrl).GetResponse().GetResponseStream()).ReadToEnd();
 			}
 			catch (Exception ex)
 			{
@@ -112,7 +112,7 @@ namespace ServiceStack.WebHost.Endpoints.Tests
 			}
 			try
 			{
-				var call2 = new StreamReader(WebRequest.Create(missingUrl).GetResponse().GetResponseStream()).ReadToEnd();
+				new StreamReader(WebRequest.Create(missingUrl).GetResponse().GetResponseStream()).ReadToEnd();
 			}
 			catch (Exception ex)
 			{
@@ -121,6 +121,37 @@ namespace ServiceStack.WebHost.Endpoints.Tests
 			}
 
 			Assert.That(errorCount, Is.EqualTo(2));
+		}
+		
+		[Test]
+		public void Can_call_MoviesZip_WebService()
+		{
+			var client = new JsonServiceClient(ListeningOn);
+			var request = new MoviesZip();
+			var response = client.Send<MoviesZipResponse>(request);
+
+			Assert.That(response.Movies.Count, Is.GreaterThan(0));
+		}
+		
+		[Test]
+		public void Calling_not_implemented_method_returns_405()
+		{
+			var client = new JsonServiceClient(ListeningOn);
+			try
+			{
+				var response = client.Put<MoviesZipResponse>("movies.zip", new MoviesZip());
+				Assert.Fail("Should throw 405 excetpion");
+			}
+			catch (WebServiceException ex)
+			{
+				Assert.That(ex.StatusCode, Is.EqualTo(405));
+			} 
+		}
+
+		[Test, Ignore]
+		public void DebugHost()
+		{
+			Thread.Sleep(180 * 1000);
 		}
 	}
 }
